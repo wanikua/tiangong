@@ -1,0 +1,43 @@
+{
+  "name": "tiangong",
+  "version": "0.1.0",
+  "description": "天工开物 — AI Agent 朝廷框架。三省六部制 × Terminal AI Agent。",
+  "main": "src/engine/query-loop.js",
+  "bin": {
+    "tiangong": "./bin/tiangong.js"
+  },
+  "scripts": {
+    "start": "node bin/tiangong.js",
+    "test": "jest",
+    "lint": "eslint src/"
+  },
+  "keywords": [
+    "ai",
+    "agent",
+    "cli",
+    "multi-agent",
+    "terminal",
+    "anthropic",
+    "claude",
+    "three-departments",
+    "six-ministries"
+  ],
+  "author": "wanikua",
+  "license": "MIT",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "commander": "^13.0.0",
+    "chalk": "^5.4.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "jest": "^30.3.0"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/wanikua/tiangong.git"
+  }
+}

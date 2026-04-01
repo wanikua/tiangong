@@ -1,0 +1,5 @@
+node_modules/
+.env
+*.log
+.worktrees/
+.DS_Store
