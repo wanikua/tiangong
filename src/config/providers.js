@@ -40,6 +40,13 @@ const PROVIDERS = {
     models: ['deepseek-chat', 'deepseek-reasoner'],
     defaultModel: 'deepseek-chat'
   },
+  qwen: {
+    name: 'Qwen 通义千问 (阿里云)',
+    baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+    envKey: 'DASHSCOPE_API_KEY',
+    models: ['qwen-max', 'qwen-plus', 'qwen-turbo', 'qwen-long'],
+    defaultModel: 'qwen-max'
+  },
   custom: {
     name: '自定义 (OpenAI 兼容)',
     baseUrl: null, // 用户自己输入

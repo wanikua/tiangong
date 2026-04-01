@@ -269,7 +269,8 @@ async function runSetup() {
     openrouter: 'https://openrouter.ai/keys',
     anthropic: 'https://console.anthropic.com/settings/keys',
     openai: 'https://platform.openai.com/api-keys',
-    deepseek: 'https://platform.deepseek.com/api_keys'
+    deepseek: 'https://platform.deepseek.com/api_keys',
+    qwen: 'https://dashscope.console.aliyun.com/apiKey'
   };
   if (keyUrls[providerId]) {
     console.log(chalk.gray(`      获取: ${keyUrls[providerId]}`));
