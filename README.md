@@ -120,20 +120,20 @@ tiangong/
 └── tests/                       # 测试
 ```
 
-## 与 Claude Code 的区别
+## 架构灵感来源
 
-| Claude Code | 天工 |
-|---|---|
-| 扁平工具列表 | 三省六部层级化 |
-| 单一 System Prompt | 中书省动态生成 |
-| 权限弹窗 | 门下省事前审核 + 封驳权 |
-| 子 Agent 无组织 | 吏部统一调度 |
-| 固定架构 | 三种制度可选 |
-| 闭源 | MIT 开源 |
-| 不可导出 | 打包上架 AgentPark |
+架构设计受到 [Claude Code 泄露源码](https://github.com/wanikua/Claude-code-leaks)（2026-03-31）的启发。研究了它的工具系统、权限模型、多 Agent 编排、Worktree 隔离等设计后，我们用三省六部制重新组织了这些能力：
+
+- 把扁平的工具列表改为六部分工
+- 把权限弹窗改为门下省事前审核（唐制还有封驳权）
+- 把无组织的子 Agent 改为吏部统一调度
+- 新增三种制度可选、记忆系统、AgentPark 导出
+
+感谢 Anthropic 的工程实践给了我们很多灵感。
 
 ## 关联项目
 
+- [Claude Code 泄露源码分析](https://github.com/wanikua/Claude-code-leaks) — 泄露源码存档 + 架构分析
 - [当皇上](https://github.com/wanikua/danghuangshang) — AI 朝廷教程 + OpenClaw 实现
 - [AgentPark](https://github.com/wanikua/AgentPark) — Agent 劳务市场
 

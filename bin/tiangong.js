@@ -16,18 +16,33 @@ const { version } = require('../package.json');
 const { startSession } = require('../src/engine/query-loop');
 const { listRegimes, getRegime } = require('../src/config/regimes');
 
+const { needsSetup, runSetup, loadConfig } = require('../src/config/setup');
+
 const program = new Command();
 
 program
   .name('tiangong')
   .description('天工开物 — AI Agent 朝廷框架')
   .version(version)
-  .option('-r, --regime <type>', '制度选择: ming | tang | modern', 'ming')
-  .option('-m, --model <model>', '模型覆盖 (默认 claude-sonnet-4-6)')
+  .option('-r, --regime <type>', '制度选择: ming | tang | modern')
+  .option('-m, --model <model>', '模型覆盖')
+  .option('-p, --provider <type>', '提供商: anthropic | openrouter | openai | deepseek')
   .option('--verbose', '详细输出')
   .option('--dry-run', '只显示执行计划，不实际执行')
   .argument('[prompt...]', '给朝廷的旨意')
   .action(async (promptParts, options) => {
+    // 首次使用：登基大典
+    if (needsSetup()) {
+      await runSetup();
+      if (promptParts.length === 0) return;
+    }
+
+    // 合并已保存的配置
+    const savedConfig = loadConfig() || {};
+    if (!options.regime) options.regime = savedConfig.regime || 'ming';
+    if (!options.model) options.model = savedConfig.model;
+    if (!options.provider) options.provider = savedConfig.provider;
+
     const prompt = promptParts.join(' ');
 
     if (!prompt) {
@@ -96,6 +111,66 @@ program
   .action(async (source, options) => {
     const { importAgent } = require('../src/export/importer');
     await importAgent(source, options);
+  });
+
+// 子命令：重新配置
+program
+  .command('setup')
+  .description('重新运行登基大典（配置 API Key / Provider / 制度）')
+  .action(async () => {
+    await runSetup();
+  });
+
+// 子命令：记忆管理
+program
+  .command('memory')
+  .description('记忆管理 — 太史局')
+  .option('-a, --agent <id>', '查看指定 Agent 的记忆')
+  .option('--court', '查看朝廷共享记忆')
+  .option('--export', '导出全部记忆')
+  .option('--import <path>', '导入记忆')
+  .option('--wipe <agentId>', '清空某个 Agent 的记忆')
+  .action((options) => {
+    const { memoryStore } = require('../src/memory/store');
+
+    if (options.agent) {
+      const memories = memoryStore.recallAgentMemory(options.agent, { limit: 30 });
+      const summary = memoryStore.getAgentMemorySummary(options.agent);
+      console.log(chalk.bold(`\n${options.agent} 的记忆 (${summary.total} 条)：\n`));
+      console.log(`  类型分布: ${JSON.stringify(summary.byType)}\n`);
+      for (const m of memories) {
+        console.log(`  [${m.type}] ${m.content}`);
+        if (m.why) console.log(chalk.gray(`         原因: ${m.why}`));
+      }
+      console.log();
+    } else if (options.court) {
+      const memories = memoryStore.recallCourtMemory({ limit: 30 });
+      console.log(chalk.bold(`\n朝廷共识 (${memories.length} 条)：\n`));
+      for (const m of memories) {
+        console.log(`  [${m.type}] ${m.content} (来源: ${m.source})`);
+      }
+      console.log();
+    } else if (options.export) {
+      const data = memoryStore.exportAllMemories();
+      const outPath = 'tiangong-memories.json';
+      require('fs').writeFileSync(outPath, JSON.stringify(data, null, 2));
+      console.log(chalk.green(`记忆已导出: ${outPath}`));
+    } else if (options.import) {
+      const data = JSON.parse(require('fs').readFileSync(options.import, 'utf-8'));
+      memoryStore.importMemories(data, { merge: true });
+      console.log(chalk.green('记忆已导入'));
+    } else if (options.wipe) {
+      memoryStore.wipeAgentMemory(options.wipe);
+      console.log(chalk.yellow(`已清空 ${options.wipe} 的记忆`));
+    } else {
+      console.log(chalk.bold('\n太史局 — 记忆管理\n'));
+      console.log('  tiangong memory --agent bingbu     查看兵部的记忆');
+      console.log('  tiangong memory --court             查看朝廷共识');
+      console.log('  tiangong memory --export            导出全部记忆');
+      console.log('  tiangong memory --import file.json  导入记忆');
+      console.log('  tiangong memory --wipe bingbu       清空兵部记忆');
+      console.log();
+    }
   });
 
 program.parse();
