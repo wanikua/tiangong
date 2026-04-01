@@ -1,7 +1,10 @@
 /**
  * 核心引擎 — 对话循环
  *
- * 天子下旨 → 中书省起草 → 门下省审核 → 尚书省执行 → 结果回奏
+ * 根据制度动态显示：
+ * 明制：司礼监接旨 → 内阁优化 → 六部执行 → 都察院审查
+ * 唐制：中书省起草 → 门下省审核 → 尚书省执行
+ * 现代：CEO 决策 → CXO 分管 → 团队执行
  */
 
 const chalk = require('chalk');
@@ -11,6 +14,37 @@ const { Dispatcher } = require('../shangshu/dispatcher');
 const { CostTracker } = require('../shangshu/hu/cost-tracker');
 const { loadConfig } = require('../config/setup');
 const { DEFAULT_REGIME, DEFAULT_MAX_BUDGET_USD } = require('../config/defaults');
+
+// 各制度的显示名称
+const REGIME_LABELS = {
+  ming: {
+    planning: { icon: '📜', name: '司礼监', verb: '接旨传令' },
+    review:   { icon: '🛡️', name: '都察院', verb: '审查' },
+    execute:  { icon: '⚔️', name: '六部', verb: '奉旨执行' },
+    approve:  '内阁票拟通过',
+    reject:   '都察院驳回',
+    done:     '🏛️ 全部完成，回奏天子。',
+    partial:  '⚠️ 部分步骤失败，请天子过目。'
+  },
+  tang: {
+    planning: { icon: '📜', name: '中书省', verb: '起草执行计划' },
+    review:   { icon: '🛡️', name: '门下省', verb: '审核' },
+    execute:  { icon: '⚔️', name: '尚书省', verb: '调度六部执行' },
+    approve:  '门下省准奏',
+    reject:   '门下省驳回',
+    done:     '🏛️ 全部完成，回奏天子。',
+    partial:  '⚠️ 部分步骤失败，请天子过目。'
+  },
+  modern: {
+    planning: { icon: '💼', name: 'CEO', verb: '制定战略' },
+    review:   { icon: '✅', name: 'QA', verb: '质量审核' },
+    execute:  { icon: '⚙️', name: 'Teams', verb: '团队执行' },
+    approve:  'Approved',
+    reject:   'Rejected',
+    done:     '✅ All tasks completed.',
+    partial:  '⚠️ Some tasks failed. Please review.'
+  }
+};
 
 /**
  * 启动一次会话
@@ -23,10 +57,12 @@ async function startSession(prompt, options = {}) {
   const model = options.model || config.model;
   const verbose = options.verbose || false;
 
+  const L = REGIME_LABELS[regimeId] || REGIME_LABELS.ming;
+
   console.log(chalk.gray(`\n制度: ${regimeId} | 模型: ${model || '(默认)'}\n`));
 
-  // ── 中书省：起草执行计划 ──
-  console.log(chalk.yellow('📜 中书省起草执行计划...\n'));
+  // ── 决策层：起草执行计划 ──
+  console.log(chalk.yellow(`${L.planning.icon} ${L.planning.name}${L.planning.verb}...\n`));
   const plan = generatePlan(prompt, regimeId);
 
   if (verbose || options.dryRun) {
@@ -43,8 +79,8 @@ async function startSession(prompt, options = {}) {
     return;
   }
 
-  // ── 门下省：审核权限 ──
-  console.log(chalk.blue('🛡️ 门下省审核中...\n'));
+  // ── 审核层 ──
+  console.log(chalk.blue(`${L.review.icon} ${L.review.name}${L.review.verb}中...\n`));
   const gate = new PermissionGate(regimeId);
 
   for (let i = 1; i < plan.steps.length; i++) {
@@ -52,14 +88,14 @@ async function startSession(prompt, options = {}) {
     const caller = plan.steps[0].agent;
     const check = gate.checkAgentCall(caller, step.agent);
     if (!check.allowed) {
-      console.log(chalk.red(`❌ 门下省驳回: ${check.reason}`));
+      console.log(chalk.red(`❌ ${L.reject}: ${check.reason}`));
       return;
     }
   }
-  console.log(chalk.green('✅ 门下省准奏\n'));
+  console.log(chalk.green(`✅ ${L.approve}\n`));
 
-  // ── 尚书省：调度六部执行 ──
-  console.log(chalk.magenta('⚔️ 尚书省调度六部执行...\n'));
+  // ── 执行层 ──
+  console.log(chalk.magenta(`${L.execute.icon} ${L.execute.name}${L.execute.verb}...\n`));
 
   const costTracker = new CostTracker(DEFAULT_MAX_BUDGET_USD);
 
@@ -101,7 +137,7 @@ async function startSession(prompt, options = {}) {
         console.log();
       }
     }
-    console.log(chalk.green('🏛️ 全部完成，回奏天子。\n'));
+    console.log(chalk.green(`${L.done}\n`));
   } else {
     for (const [stepId, stepResult] of Object.entries(result.results)) {
       if (stepResult.status === 'failed') {
@@ -110,7 +146,7 @@ async function startSession(prompt, options = {}) {
         console.log(chalk.white(stepResult.output.content));
       }
     }
-    console.log(chalk.yellow('\n⚠️ 部分步骤失败，请天子过目。\n'));
+    console.log(chalk.yellow(`\n${L.partial}\n`));
   }
 
   // 户部报账
