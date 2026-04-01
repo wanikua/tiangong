@@ -31,13 +31,7 @@ program
   .option('--dry-run', '只显示执行计划，不实际执行')
   .argument('[prompt...]', '给朝廷的旨意')
   .action(async (promptParts, options) => {
-    // 首次使用：登基大典
-    if (needsSetup()) {
-      await runSetup();
-      if (promptParts.length === 0) return;
-    }
-
-    // 合并已保存的配置
+    // 合并已保存的配置（setup 已在全局前置完成）
     const savedConfig = loadConfig() || {};
     if (!options.regime) options.regime = savedConfig.regime || 'ming';
     if (!options.model) options.model = savedConfig.model;
@@ -173,4 +167,17 @@ program
     }
   });
 
-program.parse();
+// 全局前置检查：除了 setup/court/regimes/--help/--version 外，未配置时自动触发登基
+const NO_SETUP_COMMANDS = ['setup', 'court', 'regimes'];
+const args = process.argv.slice(2);
+const subCommand = args.find(a => !a.startsWith('-'));
+
+if (needsSetup() && !NO_SETUP_COMMANDS.includes(subCommand) && !args.includes('--help') && !args.includes('-h') && !args.includes('--version') && !args.includes('-V')) {
+  (async () => {
+    await runSetup();
+    // setup 完成后重新 parse
+    program.parse();
+  })();
+} else {
+  program.parse();
+}
