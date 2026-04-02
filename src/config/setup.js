@@ -317,8 +317,9 @@ async function runSetup() {
             const size = m.size ? chalk.gray(` (${(m.size / 1e9).toFixed(1)}GB)`) : '';
             console.log(`      ${chalk.cyan('•')} ${m.name}${size}`);
           }
-          // 动态更新可用模型列表
-          provider.models = detected.map(m => m.name);
+          // 动态更新可用模型列表（不修改全局 PROVIDERS）
+          const detectedModels = detected.map(m => m.name);
+          provider = { ...provider, models: detectedModels };
           if (!provider.models.includes(provider.defaultModel)) {
             provider.defaultModel = provider.models[0];
           }

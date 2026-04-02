@@ -525,9 +525,14 @@ async function startRepl(options) {
       } else if (parts[0] === 'random') {
         // 清除数据重新随机
         console.log(chalk.yellow('\n  已重新随机分配所有大臣性格\n'));
-        personalityManager.data = {};
-        personalityManager._save();
-        personalityManager.printAll(currentRegime);
+        // 清空已有性格数据，下次访问时重新随机分配
+        const fs = require('fs');
+        const pPath = require('path').join(process.env.HOME || '/tmp', '.tiangong', 'personality', 'agents.json');
+        try { fs.unlinkSync(pPath); } catch { /* ignore */ }
+        // 重新加载
+        const { PersonalityManager } = require('../features/agent-personality');
+        const freshPM = new PersonalityManager();
+        freshPM.printAll(currentRegime);
       } else if (parts[1] === 'set' && parts[2] && parts[3]) {
         try {
           personalityManager.setPersonality(parts[0], parts[2], parts[3]);

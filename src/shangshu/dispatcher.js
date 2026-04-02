@@ -31,6 +31,10 @@ class Dispatcher {
     this.costTracker = options.costTracker || new CostTracker();
     this.cwd = options.cwd || process.cwd();
     this.verbose = options.verbose || false;
+    // 检测当前 provider 是否是 Anthropic（影响消息格式）
+    const config = require('../config/setup').loadConfig() || {};
+    this.providerId = config.provider || 'anthropic';
+    this.isAnthropic = this.providerId === 'anthropic';
   }
 
   /**
@@ -154,10 +158,13 @@ class Dispatcher {
       }
 
       // 把 assistant 消息加入历史（含 tool_use）
-      messages.push({
-        role: 'assistant',
-        content: this._buildAssistantContent(response)
-      });
+      const assistantMsg = this._buildAssistantContent(response);
+      if (this.isAnthropic) {
+        messages.push({ role: 'assistant', content: assistantMsg });
+      } else {
+        // OpenAI 格式：_buildAssistantContent 已返回完整 message
+        messages.push(assistantMsg);
+      }
 
       // 执行每个工具调用
       for (const tc of response.toolCalls) {
@@ -196,15 +203,21 @@ class Dispatcher {
         }
 
         // 截断过长的工具结果
+        if (typeof toolResult !== 'string') {
+          toolResult = toolResult ? String(toolResult) : '(无结果)';
+        }
         if (toolResult.length > 50000) {
           toolResult = toolResult.slice(0, 50000) + '\n... (截断，结果过长)';
         }
 
         // 把工具结果加入历史
-        messages.push({
-          role: 'user',
-          content: this._buildToolResult(tc.id, tc.name, toolResult)
-        });
+        const toolResultMsg = this._buildToolResult(tc.id, tc.name, toolResult);
+        if (this.isAnthropic) {
+          messages.push({ role: 'user', content: toolResultMsg });
+        } else {
+          // OpenAI 格式：_buildToolResult 已返回完整 message
+          messages.push(toolResultMsg);
+        }
       }
     }
 
@@ -268,29 +281,52 @@ class Dispatcher {
   }
 
   /**
-   * 构建 assistant 消息（Anthropic 格式）
+   * 构建 assistant 消息
+   * Anthropic: content 是 block 数组
+   * OpenAI: content 是字符串 + tool_calls 数组
    * @private
    */
   _buildAssistantContent(response) {
-    // Anthropic 格式：content 是数组
-    const blocks = [];
-    if (response.content) {
-      blocks.push({ type: 'text', text: response.content });
+    if (this.isAnthropic) {
+      // Anthropic 格式
+      const blocks = [];
+      if (response.content) {
+        blocks.push({ type: 'text', text: response.content });
+      }
+      for (const tc of response.toolCalls) {
+        blocks.push({ type: 'tool_use', id: tc.id, name: tc.name, input: tc.input });
+      }
+      return blocks;
+    } else {
+      // OpenAI 兼容格式：返回完整的 message 对象
+      const msg = { role: 'assistant' };
+      if (response.content) msg.content = response.content;
+      if (response.toolCalls && response.toolCalls.length > 0) {
+        msg.tool_calls = response.toolCalls.map(tc => ({
+          id: tc.id,
+          type: 'function',
+          function: { name: tc.name, arguments: JSON.stringify(tc.input) }
+        }));
+      }
+      return msg;
     }
-    for (const tc of response.toolCalls) {
-      blocks.push({ type: 'tool_use', id: tc.id, name: tc.name, input: tc.input });
-    }
-    return blocks;
   }
 
   /**
-   * 构建工具结果消息（Anthropic 格式）
+   * 构建工具结果消息
+   * Anthropic: role=user + content=[{ type: 'tool_result', ... }]
+   * OpenAI: role=tool + tool_call_id + content
    * @private
    */
   _buildToolResult(toolUseId, toolName, result) {
-    return [
-      { type: 'tool_result', tool_use_id: toolUseId, content: result }
-    ];
+    if (this.isAnthropic) {
+      return [
+        { type: 'tool_result', tool_use_id: toolUseId, content: result }
+      ];
+    } else {
+      // OpenAI 格式：直接返回完整的消息对象（不是数组）
+      return { role: 'tool', tool_call_id: toolUseId, content: result };
+    }
   }
 }
 

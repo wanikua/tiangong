@@ -129,10 +129,12 @@ async function callOpenAICompatible(params) {
   const message = choice.message || {};
 
   // 解析工具调用
-  const toolCalls = (message.tool_calls || []).map(tc => ({
-    id: tc.id,
+  const toolCalls = (message.tool_calls || []).map((tc, i) => ({
+    id: tc.id || `call_${Date.now()}_${i}`,  // Ollama 有时不返回 id
     name: tc.function?.name,
-    input: safeJsonParse(tc.function?.arguments)
+    input: typeof tc.function?.arguments === 'string'
+      ? safeJsonParse(tc.function.arguments)
+      : tc.function?.arguments || {}
   }));
 
   return {
