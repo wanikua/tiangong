@@ -432,7 +432,7 @@ MIT
 
 | 小红书「菠萝菠菠🍍」 | 公众号「菠言菠语」 | 微信群 |
 |:---:|:---:|:---:|
-| <a href="https://www.xiaohongshu.com/user/profile/5a169df34eacab2bc9a7a22d"><img src="https://raw.githubusercontent.com/wanikua/danghuangshang/main/images/avatar-xiaohongshu.png" width="150" style="border-radius:50%"/></a> | <img src="https://raw.githubusercontent.com/wanikua/danghuangshang/main/images/qr-wechat-official.jpg" width="150"/> | <img src="https://raw.githubusercontent.com/wanikua/danghuangshang/main/images/qr-wechat-group.png" width="150"/> |
+| [![小红书](https://raw.githubusercontent.com/wanikua/danghuangshang/main/images/avatar-xiaohongshu.png)](https://www.xiaohongshu.com/user/profile/5a169df34eacab2bc9a7a22d) | ![公众号](https://raw.githubusercontent.com/wanikua/danghuangshang/main/images/qr-wechat-official.jpg) | ![微信群](https://raw.githubusercontent.com/wanikua/danghuangshang/main/images/qr-wechat-group.png) |
 
 v0.1.0 | MIT License | [User Agreement](https://danghuangshang.com) | [Privacy Policy](https://danghuangshang.com)
 
