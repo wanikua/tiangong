@@ -162,9 +162,12 @@ tiangong/
 │   └── config/                  # Providers + Regimes + Setup
 ```
 
+## Disclaimer
+
+TianGong is an **independent, original implementation**. It does not contain any proprietary code from Anthropic, OpenAI, or any other company. The architecture is inspired by publicly available concepts in multi-agent systems and the Chinese imperial governance model. All code in this repository is original work released under the MIT License.
+
 ## Related Projects
 
-- [Claude Code Leaked Source Analysis](https://github.com/wanikua/Claude-code-leaks) — Architecture study that inspired TianGong
 - [AgentPark](https://github.com/wanikua/AgentPark) — Agent marketplace
 - [Thinking Frameworks](https://github.com/wanikua/thinking-frameworks) — Structured thinking models
 
