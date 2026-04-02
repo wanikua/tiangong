@@ -126,6 +126,12 @@ async function fadeInLines(text, lineDelay = 60) {
 // ─── 登基动画 ────────────────────────────────────────
 
 async function playCoronation() {
+  // 允许通过环境变量跳过动画（CI/测试环境）
+  if (process.env.TIANGONG_SKIP_ANIMATION === '1') {
+    console.log(chalk.yellow('\n  天工开物 — 登基大典\n'));
+    return;
+  }
+
   clearScreen();
 
   // 第一幕：午门大开

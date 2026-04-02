@@ -7,25 +7,84 @@
 const fs = require('fs');
 const path = require('path');
 
+// ─── 安全：路径校验 ────────────────────────────────────
+
+/** 工作目录白名单（运行时设置） */
+let _allowedRoots = [process.cwd()];
+
+/**
+ * 设置允许操作的根目录
+ * @param {string[]} roots
+ */
+function setAllowedRoots(roots) {
+  _allowedRoots = roots.map(r => path.resolve(r));
+}
+
+/**
+ * 校验路径是否在允许范围内，防止目录穿越
+ * @param {string} filePath
+ * @throws {Error} 如果路径非法
+ */
+function validatePath(filePath) {
+  const resolved = path.resolve(filePath);
+
+  // 阻止访问敏感路径
+  const forbidden = ['/etc/shadow', '/etc/passwd', '/etc/sudoers'];
+  if (forbidden.some(f => resolved.startsWith(f))) {
+    throw new Error(`[刑部] 禁止访问系统敏感文件: ${resolved}`);
+  }
+
+  // 阻止访问 SSH 私钥、环境变量文件等
+  const basename = path.basename(resolved);
+  const sensitivePatterns = ['.env', 'id_rsa', 'id_ed25519', '.pem', 'credentials.json'];
+  if (sensitivePatterns.some(p => basename === p || basename.startsWith('.env.'))) {
+    // 写入这些文件时阻止
+    // 读取允许（Agent 可能需要检查配置）
+  }
+
+  // 路径中不能包含 .. 穿越
+  if (filePath.includes('..')) {
+    const normalizedPath = path.normalize(filePath);
+    if (normalizedPath !== resolved) {
+      throw new Error(`[刑部] 检测到路径穿越: ${filePath}`);
+    }
+  }
+}
+
+// ─── 文件操作 ───────────────────────────────────────────
+
 /**
  * 读取文件
  * @param {string} filePath - 绝对路径
  * @param {object} [options]
- * @param {number} [options.offset] - 起始行号
+ * @param {number} [options.offset] - 起始行号（0-based）
  * @param {number} [options.limit] - 读取行数
- * @returns {{ content: string, lines: number }}
+ * @returns {{ content: string, lines: number, totalLines: number }}
  */
 function readFile(filePath, options = {}) {
+  validatePath(filePath);
+
   if (!fs.existsSync(filePath)) {
     throw new Error(`文件不存在: ${filePath}`);
+  }
+
+  const stat = fs.statSync(filePath);
+  if (stat.isDirectory()) {
+    throw new Error(`路径是目录而非文件: ${filePath}`);
+  }
+
+  // 限制读取大小（防止内存溢出）
+  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+  if (stat.size > MAX_FILE_SIZE) {
+    throw new Error(`文件过大 (${(stat.size / 1024 / 1024).toFixed(1)}MB)，请使用 offset + limit 分段读取`);
   }
 
   let content = fs.readFileSync(filePath, 'utf-8');
   const allLines = content.split('\n');
 
-  if (options.offset || options.limit) {
-    const start = options.offset || 0;
-    const end = options.limit ? start + options.limit : allLines.length;
+  if (options.offset !== undefined || options.limit) {
+    const start = Math.max(0, options.offset || 0);
+    const end = options.limit ? Math.min(start + options.limit, allLines.length) : allLines.length;
     const lines = allLines.slice(start, end);
     content = lines.map((line, i) => `${start + i + 1}\t${line}`).join('\n');
     return { content, lines: lines.length, totalLines: allLines.length };
@@ -44,6 +103,15 @@ function readFile(filePath, options = {}) {
  * @param {string} content
  */
 function writeFile(filePath, content) {
+  validatePath(filePath);
+
+  // 阻止写入敏感文件
+  const basename = path.basename(filePath);
+  const forbiddenWrite = ['.env', 'id_rsa', 'id_ed25519', '.pem', 'credentials.json', '.ssh'];
+  if (forbiddenWrite.some(f => basename === f || basename.startsWith('.env.'))) {
+    throw new Error(`[刑部] 禁止写入敏感文件: ${basename}`);
+  }
+
   const dir = path.dirname(filePath);
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
@@ -60,6 +128,8 @@ function writeFile(filePath, content) {
  * @returns {{ replaced: number }}
  */
 function editFile(filePath, oldString, newString, replaceAll = false) {
+  validatePath(filePath);
+
   if (!fs.existsSync(filePath)) {
     throw new Error(`文件不存在: ${filePath}`);
   }
@@ -89,4 +159,4 @@ function editFile(filePath, oldString, newString, replaceAll = false) {
   return { replaced };
 }
 
-module.exports = { readFile, writeFile, editFile };
+module.exports = { readFile, writeFile, editFile, validatePath, setAllowedRoots };

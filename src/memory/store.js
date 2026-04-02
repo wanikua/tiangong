@@ -174,8 +174,16 @@ class MemoryStore {
     // 更新访问计数
     const limit = query.limit || 20;
     const result = memories.slice(0, limit);
-    result.forEach(m => m.accessCount++);
-    this._saveAgentMemories(agentId, this._loadAgentMemories(agentId)); // 回写
+
+    // 在原始数据中更新 accessCount 后回写
+    const allMemories = this._loadAgentMemories(agentId);
+    const resultIds = new Set(result.map(m => m.id));
+    for (const m of allMemories) {
+      if (resultIds.has(m.id)) {
+        m.accessCount++;
+      }
+    }
+    this._saveAgentMemories(agentId, allMemories);
 
     return result;
   }

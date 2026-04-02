@@ -3,9 +3,27 @@
  */
 
 const PRICING = {
+  // Anthropic
   'claude-sonnet-4-6': { input: 3.0, output: 15.0 },   // per 1M tokens
   'claude-opus-4-6': { input: 15.0, output: 75.0 },
-  'claude-haiku-4-5': { input: 0.80, output: 4.0 }
+  'claude-haiku-4-5': { input: 0.80, output: 4.0 },
+  // OpenAI
+  'gpt-4o': { input: 2.5, output: 10.0 },
+  'gpt-4o-mini': { input: 0.15, output: 0.60 },
+  'o3-mini': { input: 1.1, output: 4.4 },
+  // DeepSeek
+  'deepseek-chat': { input: 0.14, output: 0.28 },
+  'deepseek-reasoner': { input: 0.55, output: 2.19 },
+  // Qwen
+  'qwen-max': { input: 2.0, output: 6.0 },
+  'qwen-plus': { input: 0.8, output: 2.0 },
+  'qwen-turbo': { input: 0.3, output: 0.6 },
+  // OpenRouter (prefix matching in record())
+  'anthropic/claude-sonnet-4-6': { input: 3.0, output: 15.0 },
+  'anthropic/claude-opus-4-6': { input: 15.0, output: 75.0 },
+  'openai/gpt-4o': { input: 2.5, output: 10.0 },
+  'google/gemini-2.5-pro': { input: 1.25, output: 10.0 },
+  'deepseek/deepseek-r1': { input: 0.55, output: 2.19 },
 };
 
 class CostTracker {

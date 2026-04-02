@@ -17,6 +17,8 @@ const { CostTracker } = require('./hu/cost-tracker');
 const { buildSystemPrompt } = require('../zhongshu/prompt-builder');
 const { memoryStore } = require('../memory/store');
 const { processConversation } = require('../memory/extractor');
+const { reputationManager } = require('../features/reputation');
+const { sessionRecorder } = require('../features/time-travel');
 
 const MAX_TOOL_ROUNDS = 30;
 
@@ -37,8 +39,17 @@ class Dispatcher {
   async executePlan(plan) {
     const results = {};
 
+    // 开始记录会话（奏折）
+    const sessionId = sessionRecorder.startSession(plan.prompt, {
+      regime: this.regimeId,
+      model: this.model
+    });
+
     for (const step of plan.steps) {
       this.onProgress({ type: 'step_start', step: step.id, agent: step.agent, task: step.description });
+      sessionRecorder.recordEvent(sessionId, { type: 'step_start', step: step.id, agent: step.agent, task: step.description });
+
+      const stepStart = Date.now();
 
       try {
         if (step.dependencies) {
@@ -60,18 +71,34 @@ class Dispatcher {
         results[step.id] = { status: 'success', output: result, completedAt: new Date().toISOString() };
 
         this.onProgress({ type: 'step_complete', step: step.id, agent: step.agent, status: 'success' });
+        sessionRecorder.recordEvent(sessionId, { type: 'step_complete', step: step.id, agent: step.agent });
+
+        // 功勋奖励
+        const elapsed = Date.now() - stepStart;
+        reputationManager.reward(step.agent, 'task_complete');
+        if (elapsed < 10000) reputationManager.reward(step.agent, 'task_fast');
+
       } catch (err) {
         results[step.id] = { status: 'failed', error: err.message, completedAt: new Date().toISOString() };
         this.onProgress({ type: 'step_failed', step: step.id, agent: step.agent, error: err.message });
+        sessionRecorder.recordEvent(sessionId, { type: 'step_failed', step: step.id, agent: step.agent, error: err.message });
+
+        // 功勋惩罚
+        reputationManager.penalize(step.agent, 'task_fail');
       }
     }
 
-    return {
+    const finalResult = {
       plan, results,
       completedAt: new Date().toISOString(),
       success: Object.values(results).every(r => r.status === 'success'),
       cost: this.costTracker.getSummary()
     };
+
+    // 结束会话记录
+    sessionRecorder.endSession(sessionId, finalResult);
+
+    return finalResult;
   }
 
   /**
@@ -149,6 +176,15 @@ class Dispatcher {
             const safety = checkCommandSafety(tc.input.command);
             if (safety.blocked) {
               toolResult = `[刑部拦截] 危险命令被阻止: ${safety.risks.map(r => r.desc).join(', ')}`;
+            } else if (safety.requiresConfirmation) {
+              // 记录警告但允许执行
+              this.onProgress({
+                type: 'tool_call',
+                step: step.id,
+                agent: agentId,
+                tool: '⚠️ 刑部警告',
+                input: { risks: safety.risks.map(r => r.desc) }
+              });
             }
           }
 

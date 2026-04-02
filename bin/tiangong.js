@@ -40,14 +40,7 @@ program
     const prompt = promptParts.join(' ');
 
     if (!prompt) {
-      // 交互模式
-      console.log(chalk.yellow('┌─────────────────────────────────┐'));
-      console.log(chalk.yellow('│  天工开物 v' + version.padEnd(23) + '│'));
-      console.log(chalk.yellow('│  三省六部，听旨办差              │'));
-      console.log(chalk.yellow('└─────────────────────────────────┘'));
-      console.log();
-      console.log(`制度: ${chalk.cyan(options.regime)}`);
-      console.log(`输入旨意，或 ${chalk.gray('Ctrl+C')} 退朝\n`);
+      // 交互模式（Banner 由 REPL 显示）
 
       const { startRepl } = require('../src/engine/repl');
       await startRepl(options);
@@ -113,6 +106,52 @@ program
   .description('重新运行登基大典（配置 API Key / Provider / 制度）')
   .action(async () => {
     await runSetup();
+  });
+
+// 子命令：功勋排行榜
+program
+  .command('rank [agentId]')
+  .description('查看 Agent 功勋排行榜')
+  .action((agentId) => {
+    const { reputationManager } = require('../src/features/reputation');
+    if (agentId) {
+      reputationManager.printAgentDetail(agentId);
+    } else {
+      reputationManager.printLeaderboard();
+    }
+  });
+
+// 子命令：奏折回放
+program
+  .command('replay [index]')
+  .description('回放历史会话 / 生成周报')
+  .option('--weekly', '生成本周周报')
+  .option('--diff <n1> <n2>', '对比两次会话')
+  .action((index, options) => {
+    const { sessionRecorder } = require('../src/features/time-travel');
+    if (options.weekly) {
+      sessionRecorder.generateWeeklyReport();
+    } else if (index) {
+      sessionRecorder.printReplay(parseInt(index));
+    } else {
+      sessionRecorder.printSessionList();
+    }
+  });
+
+// 子命令：大理寺验尸报告
+program
+  .command('autopsy [index]')
+  .description('故障分析 — 大理寺验尸报告')
+  .option('--all', '查看所有失败统计')
+  .action((index, options) => {
+    const { printAutopsy, printFailureStats } = require('../src/features/autopsy');
+    if (options.all) {
+      printFailureStats();
+    } else if (index) {
+      printAutopsy(parseInt(index));
+    } else {
+      printAutopsy();
+    }
   });
 
 // 子命令：记忆管理

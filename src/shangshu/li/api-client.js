@@ -139,10 +139,30 @@ async function callOpenAICompatible(params) {
 }
 
 /**
- * HTTP POST 请求
+ * HTTP POST 请求（含自动重试）
  * @private
  */
-function httpPost(url, body, headers) {
+async function httpPost(url, body, headers, retries = 2) {
+  let lastError;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await _httpPostOnce(url, body, headers);
+    } catch (err) {
+      lastError = err;
+      // 仅对可重试的错误进行重试（超时、5xx、网络错误）
+      const isRetryable = err.message.includes('超时')
+        || err.message.includes('ECONNRESET')
+        || err.message.includes('ECONNREFUSED')
+        || err.message.match(/API 5\d\d/);
+      if (!isRetryable || attempt === retries) break;
+      // 指数退避
+      await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt)));
+    }
+  }
+  throw lastError;
+}
+
+function _httpPostOnce(url, body, headers) {
   return new Promise((resolve, reject) => {
     const parsed = new URL(url);
     const lib = parsed.protocol === 'https:' ? https : http;
@@ -168,7 +188,16 @@ function httpPost(url, body, headers) {
           const json = JSON.parse(raw);
           if (res.statusCode >= 400) {
             const errMsg = json.error?.message || json.message || raw;
-            reject(new Error(`API ${res.statusCode}: ${errMsg}`));
+            // 友好的错误消息
+            if (res.statusCode === 401) {
+              reject(new Error(`API Key 无效或已过期。请运行 tiangong setup 重新配置`));
+            } else if (res.statusCode === 429) {
+              reject(new Error(`API 请求频率超限，请稍后重试`));
+            } else if (res.statusCode === 529 || res.statusCode === 503) {
+              reject(new Error(`API ${res.statusCode}: 服务暂时过载，稍后重试`));
+            } else {
+              reject(new Error(`API ${res.statusCode}: ${errMsg}`));
+            }
           } else {
             resolve(json);
           }
@@ -178,8 +207,14 @@ function httpPost(url, body, headers) {
       });
     });
 
-    req.on('error', reject);
-    req.on('timeout', () => { req.destroy(); reject(new Error('API 请求超时')); });
+    req.on('error', (err) => {
+      if (err.code === 'ECONNREFUSED') {
+        reject(new Error(`无法连接到 API 服务器 (${parsed.hostname})。请检查网络或 Base URL 配置`));
+      } else {
+        reject(err);
+      }
+    });
+    req.on('timeout', () => { req.destroy(); reject(new Error('API 请求超时 (120s)，请检查网络连接')); });
     req.write(data);
     req.end();
   });

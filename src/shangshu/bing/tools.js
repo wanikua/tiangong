@@ -11,6 +11,61 @@ const fs = require('fs');
 const path = require('path');
 
 /**
+ * 简易 glob 匹配（纯 JS 实现，无需外部依赖）
+ * 支持 *, **, ? 通配符
+ * @param {string} pattern
+ * @param {string} dir
+ * @param {number} [maxResults=100]
+ * @returns {string[]}
+ */
+function globMatch(pattern, dir, maxResults = 100) {
+  const results = [];
+
+  // 将 glob pattern 转为正则
+  function patternToRegex(pat) {
+    let regex = pat
+      .replace(/\./g, '\\.')
+      .replace(/\*\*/g, '⟨GLOBSTAR⟩')
+      .replace(/\*/g, '[^/]*')
+      .replace(/⟨GLOBSTAR⟩/g, '.*')
+      .replace(/\?/g, '[^/]');
+    return new RegExp(`^${regex}$`);
+  }
+
+  const regex = patternToRegex(pattern);
+
+  function walk(currentDir, relPath) {
+    if (results.length >= maxResults) return;
+
+    let entries;
+    try {
+      entries = fs.readdirSync(currentDir, { withFileTypes: true });
+    } catch { return; }
+
+    for (const entry of entries) {
+      if (results.length >= maxResults) return;
+
+      // 跳过隐藏目录和 node_modules
+      if (entry.name.startsWith('.') || entry.name === 'node_modules') continue;
+
+      const childRel = relPath ? `${relPath}/${entry.name}` : entry.name;
+      const childFull = path.join(currentDir, entry.name);
+
+      if (entry.isDirectory()) {
+        walk(childFull, childRel);
+      } else if (entry.isFile()) {
+        if (regex.test(childRel)) {
+          results.push(childFull);
+        }
+      }
+    }
+  }
+
+  walk(dir, '');
+  return results;
+}
+
+/**
  * 所有工具定义
  * 格式兼容 Anthropic tool_use 和 OpenAI function calling
  */
@@ -39,14 +94,14 @@ const TOOLS = [
   },
   {
     name: 'read_file',
-    description: '读取文件内容。返回带行号的内容。',
+    description: '读取文件内容。返回带行号的内容。支持 offset/limit 分段读取。',
     ministry: 'bing',
     input_schema: {
       type: 'object',
       properties: {
         file_path: { type: 'string', description: '文件绝对路径' },
-        offset: { type: 'number', description: '起始行号' },
-        limit: { type: 'number', description: '读取行数' }
+        offset: { type: 'number', description: '起始行号（0-based）' },
+        limit: { type: 'number', description: '读取行数，默认读全部' }
       },
       required: ['file_path']
     },
@@ -57,7 +112,7 @@ const TOOLS = [
   },
   {
     name: 'write_file',
-    description: '创建或覆盖文件。',
+    description: '创建或覆盖文件。写入前会自动创建缺失的父目录。',
     ministry: 'bing',
     input_schema: {
       type: 'object',
@@ -74,7 +129,7 @@ const TOOLS = [
   },
   {
     name: 'edit_file',
-    description: '编辑文件：将 old_string 替换为 new_string。',
+    description: '编辑文件：将 old_string 替换为 new_string。old_string 必须在文件中唯一匹配，除非设置 replace_all。',
     ministry: 'bing',
     input_schema: {
       type: 'object',
@@ -93,52 +148,64 @@ const TOOLS = [
   },
   {
     name: 'glob',
-    description: '按模式搜索文件。支持 **/*.js 等 glob 模式。',
+    description: '按模式搜索文件。支持 **/*.js, src/**/*.ts 等 glob 模式。返回匹配的文件路径列表。',
     ministry: 'bing',
     input_schema: {
       type: 'object',
       properties: {
-        pattern: { type: 'string', description: 'Glob 模式，如 **/*.ts' },
-        path: { type: 'string', description: '搜索目录' }
+        pattern: { type: 'string', description: 'Glob 模式，如 **/*.ts, src/**/*.js' },
+        path: { type: 'string', description: '搜索根目录，默认为工作目录' }
       },
       required: ['pattern']
     },
     execute: async (input, context) => {
-      // 用 find 模拟 glob（简化版，后续可换 fast-glob）
       const dir = input.path || context.cwd;
-      const result = await execBash(
-        `find "${dir}" -name "${input.pattern.replace('**/', '')}" -type f 2>/dev/null | head -50`,
-        { cwd: dir }
-      );
-      return result.stdout || '(无匹配)';
+      try {
+        const matches = globMatch(input.pattern, dir);
+        if (matches.length === 0) return '(无匹配)';
+        return matches.join('\n');
+      } catch (err) {
+        return `搜索失败: ${err.message}`;
+      }
     }
   },
   {
     name: 'grep',
-    description: '在文件中搜索内容。支持正则表达式。',
+    description: '在文件中搜索内容。支持正则表达式。返回匹配的行及行号。',
     ministry: 'bing',
     input_schema: {
       type: 'object',
       properties: {
         pattern: { type: 'string', description: '搜索模式（正则）' },
         path: { type: 'string', description: '搜索目录或文件' },
-        glob: { type: 'string', description: '文件过滤，如 *.js' }
+        glob: { type: 'string', description: '文件过滤，如 *.js' },
+        context_lines: { type: 'number', description: '显示匹配行前后的行数，默认 0' }
       },
       required: ['pattern']
     },
     execute: async (input, context) => {
       const dir = input.path || context.cwd;
-      let cmd = `rg --no-heading -n "${input.pattern}" "${dir}"`;
+      // 优先用 rg，降级用 grep
+      let cmd = `rg --no-heading -n`;
+      if (input.context_lines) cmd += ` -C ${input.context_lines}`;
+      cmd += ` "${input.pattern}" "${dir}"`;
       if (input.glob) cmd += ` --glob "${input.glob}"`;
-      cmd += ' 2>/dev/null | head -50';
+      cmd += ' 2>/dev/null | head -80';
 
-      const result = await execBash(cmd, { cwd: context.cwd });
+      let result = await execBash(cmd, { cwd: context.cwd });
+      if (!result.stdout) {
+        // 降级到 grep
+        let fallback = `grep -rn "${input.pattern}" "${dir}"`;
+        if (input.glob) fallback += ` --include="${input.glob}"`;
+        fallback += ' 2>/dev/null | head -80';
+        result = await execBash(fallback, { cwd: context.cwd });
+      }
       return result.stdout || '(无匹配)';
     }
   },
   {
     name: 'list_dir',
-    description: '列出目录内容。',
+    description: '列出目录内容。显示文件类型（📁 目录 / 📄 文件）和文件大小。',
     ministry: 'bing',
     input_schema: {
       type: 'object',
@@ -148,11 +215,35 @@ const TOOLS = [
       required: ['path']
     },
     execute: async (input) => {
+      if (!fs.existsSync(input.path)) {
+        throw new Error(`目录不存在: ${input.path}`);
+      }
       const entries = fs.readdirSync(input.path, { withFileTypes: true });
-      return entries.map(e => `${e.isDirectory() ? '📁' : '📄'} ${e.name}`).join('\n');
+      return entries.map(e => {
+        const icon = e.isDirectory() ? '📁' : '📄';
+        let size = '';
+        if (!e.isDirectory()) {
+          try {
+            const stat = fs.statSync(path.join(input.path, e.name));
+            size = ` (${formatBytes(stat.size)})`;
+          } catch { /* ignore */ }
+        }
+        return `${icon} ${e.name}${size}`;
+      }).join('\n');
     }
   }
 ];
+
+/**
+ * 格式化字节数
+ * @param {number} bytes
+ * @returns {string}
+ */
+function formatBytes(bytes) {
+  if (bytes < 1024) return `${bytes}B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)}MB`;
+}
 
 /**
  * 获取工具的 API schema（用于发送给 LLM）
@@ -181,7 +272,7 @@ function getToolSchemas(ministries) {
 async function executeTool(toolName, input, context) {
   const tool = TOOLS.find(t => t.name === toolName);
   if (!tool) {
-    throw new Error(`未知工具: ${toolName}`);
+    throw new Error(`未知工具: ${toolName}。可用工具: ${TOOLS.map(t => t.name).join(', ')}`);
   }
   return tool.execute(input, context);
 }

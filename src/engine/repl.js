@@ -1,5 +1,15 @@
 /**
  * 交互式 REPL — 朝堂议事
+ *
+ * 支持命令：
+ *   /court     显示朝廷架构
+ *   /cost      户部报账
+ *   /regime    查看/切换制度
+ *   /memory    太史局记忆概况
+ *   /history   查看最近旨意
+ *   /clear     清屏
+ *   /help      帮助
+ *   /exit      退朝
  */
 
 const readline = require('readline');
@@ -7,31 +17,56 @@ const chalk = require('chalk');
 const { startSession } = require('./query-loop');
 const { version } = require('../../package.json');
 
-const REPL_BANNER = `
+// ─── 美化 Banner ────────────────────────────────────────
+
+function makeBanner(regimeId) {
+  const regimeLabels = {
+    ming: ['🏮', '明朝内阁制'],
+    tang: ['🐉', '唐朝三省制'],
+    modern: ['🏢', '现代企业制']
+  };
+  const [icon, label] = regimeLabels[regimeId] || regimeLabels.ming;
+
+  return `
 ${chalk.yellow('  ╔══════════════════════════════════════════════════════╗')}
 ${chalk.yellow('  ║')}                                                      ${chalk.yellow('║')}
-${chalk.yellow('  ║')}   ${chalk.bold.yellow('天 工 开 物')} ${chalk.gray(`v${version}`)}                                ${chalk.yellow('║')}
-${chalk.yellow('  ║')}                                                      ${chalk.yellow('║')}
-${chalk.yellow('  ║')}   ${chalk.red('🐉')} ${chalk.white('三省六部，听旨办差')}                            ${chalk.yellow('║')}
-${chalk.yellow('  ║')}   ${chalk.red('👑')} ${chalk.white('养好班子，派去打工')}                            ${chalk.yellow('║')}
+${chalk.yellow('  ║')}   ${chalk.bold.yellow('天 工 开 物')} ${chalk.gray('v' + version)}                                ${chalk.yellow('║')}
+${chalk.yellow('  ║')}   ${icon} ${chalk.white(label)}                                      ${chalk.yellow('║')}
 ${chalk.yellow('  ║')}                                                      ${chalk.yellow('║')}
 ${chalk.yellow('  ║')}   ${chalk.gray('/court  朝廷架构    /cost   户部账目')}           ${chalk.yellow('║')}
-${chalk.yellow('  ║')}   ${chalk.gray('/regime 切换制度    /memory 太史局')}             ${chalk.yellow('║')}
-${chalk.yellow('  ║')}   ${chalk.gray('/help   帮助        /exit   退朝')}               ${chalk.yellow('║')}
+${chalk.yellow('  ║')}   ${chalk.gray('/regime 制度切换    /memory 太史局')}             ${chalk.yellow('║')}
+${chalk.yellow('  ║')}   ${chalk.gray('/clear  清屏        /help   帮助')}               ${chalk.yellow('║')}
+${chalk.yellow('  ║')}   ${chalk.gray('/history 历史旨意   /exit   退朝')}               ${chalk.yellow('║')}
 ${chalk.yellow('  ║')}                                                      ${chalk.yellow('║')}
 ${chalk.yellow('  ╚══════════════════════════════════════════════════════╝')}
 `;
+}
 
 /**
  * 启动交互式 REPL
  */
 async function startRepl(options) {
-  console.log(REPL_BANNER);
+  let currentRegime = options.regime || 'ming';
+  const history = []; // 旨意历史
+  let sessionCosts = { totalUsd: 0, inputTokens: 0, outputTokens: 0, sessions: 0 };
+  let isProcessing = false; // 防止并发
+
+  console.log(makeBanner(currentRegime));
+
+  const promptIcons = { ming: '👑', tang: '🐉', modern: '💼' };
+  const promptNames = { ming: '天子', tang: '天子', modern: 'CEO' };
+
+  function getPrompt() {
+    const icon = promptIcons[currentRegime] || '👑';
+    const name = promptNames[currentRegime] || '天子';
+    return chalk.yellow(`  ${name} ${icon} > `);
+  }
 
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
-    prompt: chalk.yellow('  天子 👑 > ')
+    prompt: getPrompt(),
+    historySize: 100
   });
 
   rl.prompt();
@@ -40,39 +75,86 @@ async function startRepl(options) {
     const input = line.trim();
     if (!input) { rl.prompt(); return; }
 
-    // 内置命令
-    if (input === '/exit' || input === '/退朝') {
-      console.log(chalk.yellow('\n  退朝。天下太平。\n'));
+    // 防止重复提交
+    if (isProcessing) {
+      console.log(chalk.gray('  （上一道旨意正在执行中，请稍候）'));
+      return;
+    }
+
+    // ── 内置命令 ──
+
+    if (input === '/exit' || input === '/退朝' || input === '/quit') {
+      console.log();
+      console.log(chalk.yellow('  ┌──────────────────────────────────────┐'));
+      console.log(chalk.yellow('  │') + chalk.white('  退朝。天下太平。百官跪安。            ') + chalk.yellow('│'));
+      if (sessionCosts.sessions > 0) {
+        const costStr = `$${sessionCosts.totalUsd.toFixed(4)}`;
+        console.log(chalk.yellow('  │') + chalk.gray(`  本朝会 ${sessionCosts.sessions} 道旨意，花费 ${costStr}`.padEnd(38)) + chalk.yellow('│'));
+      }
+      console.log(chalk.yellow('  └──────────────────────────────────────┘'));
+      console.log();
       rl.close();
       return;
     }
 
+    if (input === '/clear' || input === '/清屏') {
+      process.stdout.write('\x1B[2J\x1B[0f');
+      console.log(makeBanner(currentRegime));
+      rl.prompt();
+      return;
+    }
+
     if (input === '/cost' || input === '/账目') {
-      console.log(chalk.gray('  （户部报账功能开发中）'));
-      rl.prompt(); return;
+      printCostReport(sessionCosts);
+      rl.prompt();
+      return;
     }
 
     if (input === '/court' || input === '/朝廷') {
       const { getRegime } = require('../config/regimes');
-      const regime = getRegime(options.regime || 'ming');
-      console.log(chalk.bold(`\n  ${regime.name}\n`));
-      console.log(regime.diagram);
-      console.log(chalk.bold('  百官名册：\n'));
-      for (const agent of regime.agents) {
-        console.log(`    ${agent.emoji} ${chalk.cyan(agent.name.padEnd(8))} (${agent.id}) — ${agent.role}`);
-      }
+      const regime = getRegime(currentRegime);
       console.log();
-      rl.prompt(); return;
+      console.log(chalk.bold(`  ${regime.name}`));
+      console.log(regime.diagram);
+
+      // 分层展示
+      const layers = { planning: '决策层', review: '审核层', execution: '执行层' };
+      for (const [layerId, layerName] of Object.entries(layers)) {
+        const agents = regime.agents.filter(a => a.layer === layerId);
+        if (agents.length > 0) {
+          console.log(chalk.bold(`  ${layerName}：`));
+          for (const agent of agents) {
+            console.log(`    ${agent.emoji} ${chalk.cyan(agent.name.padEnd(8))} (${chalk.gray(agent.id)}) — ${agent.role}`);
+          }
+          console.log();
+        }
+      }
+      rl.prompt();
+      return;
     }
 
-    if (input === '/regime' || input === '/制度') {
-      const { listRegimes } = require('../config/regimes');
-      console.log();
-      for (const r of listRegimes()) {
-        console.log(`    ${chalk.cyan(r.id.padEnd(10))} ${r.name} — ${r.description}`);
+    if (input.startsWith('/regime') || input.startsWith('/制度')) {
+      const parts = input.split(/\s+/);
+      if (parts.length >= 2 && ['ming', 'tang', 'modern'].includes(parts[1])) {
+        // 切换制度
+        const oldRegime = currentRegime;
+        currentRegime = parts[1];
+        options.regime = currentRegime;
+        const names = { ming: '🏮 明朝内阁制', tang: '🐉 唐朝三省制', modern: '🏢 现代企业制' };
+        console.log(chalk.green(`\n  制度已切换: ${names[oldRegime]} → ${chalk.bold(names[currentRegime])}\n`));
+        rl.setPrompt(getPrompt());
+      } else {
+        // 列出可用制度
+        const { listRegimes } = require('../config/regimes');
+        console.log(chalk.bold('\n  可用制度：\n'));
+        for (const r of listRegimes()) {
+          const active = r.id === currentRegime ? chalk.green(' ← 当前') : '';
+          console.log(`    ${chalk.cyan(r.id.padEnd(10))} ${r.name} — ${r.description}${active}`);
+        }
+        console.log(chalk.gray('\n  切换示例: /regime tang\n'));
       }
-      console.log();
-      rl.prompt(); return;
+      rl.prompt();
+      return;
     }
 
     if (input === '/memory' || input === '/记忆') {
@@ -80,40 +162,284 @@ async function startRepl(options) {
       const data = memoryStore.exportAllMemories();
       const agentCount = Object.keys(data.agents).length;
       const totalMem = Object.values(data.agents).reduce((s, a) => s + a.length, 0) + data.court.length;
-      console.log(chalk.bold(`\n  太史局：${agentCount} 位大臣，共 ${totalMem} 条记忆\n`));
-      for (const [id, mems] of Object.entries(data.agents)) {
-        if (mems.length > 0) console.log(`    ${chalk.cyan(id)}: ${mems.length} 条`);
-      }
-      if (data.court.length > 0) console.log(`    ${chalk.yellow('朝廷共识')}: ${data.court.length} 条`);
       console.log();
-      rl.prompt(); return;
+      console.log(chalk.bold(`  📜 太史局 — 记忆总览`));
+      console.log(chalk.gray(`  ─────────────────────────────`));
+      console.log(`  ${chalk.white('大臣数:')} ${chalk.cyan(agentCount)}   ${chalk.white('记忆总条数:')} ${chalk.cyan(totalMem)}`);
+      console.log();
+      for (const [id, mems] of Object.entries(data.agents)) {
+        if (mems.length > 0) {
+          const bar = '█'.repeat(Math.min(mems.length, 20)) + '░'.repeat(Math.max(0, 20 - mems.length));
+          console.log(`    ${chalk.cyan(id.padEnd(16))} ${chalk.green(bar)} ${mems.length} 条`);
+        }
+      }
+      if (data.court.length > 0) {
+        console.log(`    ${chalk.yellow('朝廷共识'.padEnd(14))} ${'█'.repeat(Math.min(data.court.length, 20))} ${data.court.length} 条`);
+      }
+      console.log();
+      rl.prompt();
+      return;
+    }
+
+    if (input === '/history' || input === '/历史') {
+      if (history.length === 0) {
+        console.log(chalk.gray('\n  （本朝会暂无旨意记录）\n'));
+      } else {
+        console.log(chalk.bold('\n  📋 旨意记录：\n'));
+        const recent = history.slice(-10);
+        for (let i = 0; i < recent.length; i++) {
+          const h = recent[i];
+          const status = h.success ? chalk.green('✓') : chalk.red('✗');
+          const time = new Date(h.time).toLocaleTimeString();
+          console.log(`    ${status} ${chalk.gray(time)} ${chalk.white(h.prompt.slice(0, 60))}`);
+        }
+        console.log();
+      }
+      rl.prompt();
+      return;
+    }
+
+    // ── 创新功能命令 ──
+
+    if (input.startsWith('/pk') || input.startsWith('/武举')) {
+      const { runPK } = require('../features/pk-arena');
+      const args = input.replace(/^\/(pk|武举)\s*/, '').trim();
+      const parts = args.split(/\s+/);
+
+      let judgeId = null;
+      let contestants = [];
+      let pkPrompt = '';
+
+      // 解析参数
+      let i = 0;
+      if (parts[i] === '--judge' && parts[i + 1]) {
+        judgeId = parts[i + 1];
+        i += 2;
+      }
+
+      // 收集 contestant IDs（非引号包裹的参数）
+      while (i < parts.length && !parts[i].startsWith('"') && !parts[i].startsWith("'")) {
+        contestants.push(parts[i]);
+        i++;
+      }
+
+      pkPrompt = parts.slice(i).join(' ').replace(/^["']|["']$/g, '');
+
+      if (contestants.length < 2 || !pkPrompt) {
+        console.log(chalk.yellow('\n  用法: /pk [--judge 主考官] <Agent1> <Agent2> "题目"'));
+        console.log(chalk.gray('  示例: /pk bingbu gongbu "写一个快速排序"'));
+        console.log(chalk.gray('  示例: /pk --judge duchayuan bingbu gongbu "实现 HTTP 服务器"\n'));
+        rl.prompt();
+        return;
+      }
+
+      isProcessing = true;
+      try {
+        await runPK({ prompt: pkPrompt, contestants, judgeId, regimeId: currentRegime });
+      } catch (err) {
+        console.error(chalk.red(`\n  PK 执行失败: ${err.message}\n`));
+      }
+      isProcessing = false;
+      rl.prompt();
+      return;
+    }
+
+    if (input.startsWith('/debate') || input.startsWith('/廷议')) {
+      const { runDebate } = require('../features/court-debate');
+      const args = input.replace(/^\/(debate|廷议)\s*/, '').trim();
+
+      let rounds = 2;
+      let topic = args;
+
+      // 解析 --rounds
+      const roundsMatch = args.match(/--rounds?\s+(\d+)/);
+      if (roundsMatch) {
+        rounds = parseInt(roundsMatch[1]);
+        topic = args.replace(/--rounds?\s+\d+/, '').trim();
+      }
+
+      if (!topic) {
+        console.log(chalk.yellow('\n  用法: /debate [--rounds N] "议题"'));
+        console.log(chalk.gray('  示例: /debate "我们应该用 PostgreSQL 还是 MongoDB？"'));
+        console.log(chalk.gray('  示例: /debate --rounds 3 "微服务 vs 单体架构"\n'));
+        rl.prompt();
+        return;
+      }
+
+      isProcessing = true;
+      try {
+        await runDebate({ topic, rounds, regimeId: currentRegime });
+      } catch (err) {
+        console.error(chalk.red(`\n  廷议失败: ${err.message}\n`));
+      }
+      isProcessing = false;
+      rl.prompt();
+      return;
+    }
+
+    if (input.startsWith('/rank') || input.startsWith('/功勋')) {
+      const { reputationManager } = require('../features/reputation');
+      const args = input.replace(/^\/(rank|功勋)\s*/, '').trim();
+
+      if (args) {
+        reputationManager.printAgentDetail(args);
+      } else {
+        reputationManager.printLeaderboard();
+      }
+      rl.prompt();
+      return;
+    }
+
+    if (input.startsWith('/replay') || input.startsWith('/回放')) {
+      const { sessionRecorder } = require('../features/time-travel');
+      const args = input.replace(/^\/(replay|回放)\s*/, '').trim();
+
+      if (args === '--weekly' || args === '周报') {
+        sessionRecorder.generateWeeklyReport();
+      } else if (args) {
+        const index = parseInt(args);
+        if (!isNaN(index)) {
+          sessionRecorder.printReplay(index);
+        } else {
+          console.log(chalk.yellow('\n  用法: /replay [序号] | --weekly\n'));
+        }
+      } else {
+        sessionRecorder.printSessionList();
+      }
+      rl.prompt();
+      return;
+    }
+
+    if (input.startsWith('/exam') || input.startsWith('/科举')) {
+      const { runExam } = require('../features/imperial-exam');
+      const args = input.replace(/^\/(exam|科举)\s*/, '').trim();
+      const parts = args.split(/\s+/);
+
+      let agentId = parts[0];
+      let subject = null;
+      const subjectMatch = args.match(/--subject\s+(\S+)/);
+      if (subjectMatch) {
+        subject = subjectMatch[1];
+        agentId = args.replace(/--subject\s+\S+/, '').trim().split(/\s+/)[0];
+      }
+
+      if (!agentId) {
+        console.log(chalk.yellow('\n  用法: /exam <AgentId> [--subject 科目]'));
+        console.log(chalk.gray('  示例: /exam bingbu'));
+        console.log(chalk.gray('  示例: /exam bingbu --subject 算术'));
+        console.log(chalk.gray('  科目: 明经 / 明法 / 策论 / 诗赋 / 算术\n'));
+        rl.prompt();
+        return;
+      }
+
+      isProcessing = true;
+      try {
+        await runExam({ agentId, subject, regimeId: currentRegime });
+      } catch (err) {
+        console.error(chalk.red(`\n  科举失败: ${err.message}\n`));
+      }
+      isProcessing = false;
+      rl.prompt();
+      return;
+    }
+
+    if (input.startsWith('/autopsy') || input.startsWith('/验尸')) {
+      const { printAutopsy, printFailureStats } = require('../features/autopsy');
+      const args = input.replace(/^\/(autopsy|验尸)\s*/, '').trim();
+
+      if (args === '--all') {
+        printFailureStats();
+      } else if (args) {
+        printAutopsy(parseInt(args));
+      } else {
+        printAutopsy();
+      }
+      rl.prompt();
+      return;
     }
 
     if (input.startsWith('/help') || input === '/帮助') {
       console.log(`
   ${chalk.bold.yellow('朝堂指令：')}
 
-    ${chalk.cyan('/court')}     显示朝廷架构 + 百官名册
-    ${chalk.cyan('/regime')}    查看可选制度
-    ${chalk.cyan('/memory')}    太史局记忆概况
-    ${chalk.cyan('/cost')}      户部报账
-    ${chalk.cyan('/help')}      帮助
-    ${chalk.cyan('/exit')}      退朝
+  ${chalk.gray('── 基础 ──')}
+    ${chalk.cyan('/court')}          显示朝廷架构 + 百官名册
+    ${chalk.cyan('/regime [id]')}    查看/切换制度 (ming/tang/modern)
+    ${chalk.cyan('/memory')}         太史局记忆概况
+    ${chalk.cyan('/cost')}           户部报账
+    ${chalk.cyan('/history')}        旨意历史
+
+  ${chalk.gray('── 独创功能 ──')}
+    ${chalk.cyan('/pk')}             ⚔️  武举殿试 — Agent 对决擂台
+    ${chalk.cyan('/debate')}         📣 廷议 — 多 Agent 朝堂辩论
+    ${chalk.cyan('/rank')}           🏆 功勋榜 — Agent 经验值排行
+    ${chalk.cyan('/exam')}           📝 科举考试 — Agent 能力基准测试
+    ${chalk.cyan('/replay')}         📜 奏折回放 — 会话时间旅行
+    ${chalk.cyan('/autopsy')}        🔍 大理寺 — 故障验尸报告
+    ${chalk.cyan('/replay --weekly')} 📊 自动生成周报
+
+  ${chalk.gray('── 系统 ──')}
+    ${chalk.cyan('/clear')}          清屏
+    ${chalk.cyan('/help')}           帮助
+    ${chalk.cyan('/exit')}           退朝
       `);
-      rl.prompt(); return;
+      rl.prompt();
+      return;
     }
 
-    // 执行旨意
+    // ── 执行旨意 ──
+
+    isProcessing = true;
+    const startTime = Date.now();
+
     try {
-      await startSession(input, options);
+      console.log();
+      await startSession(input, { ...options, regime: currentRegime, _onCost: (cost) => {
+        sessionCosts.totalUsd += cost.total.totalCostUsd;
+        sessionCosts.inputTokens += cost.total.inputTokens;
+        sessionCosts.outputTokens += cost.total.outputTokens;
+        sessionCosts.sessions++;
+      }});
+
+      history.push({ prompt: input, success: true, time: Date.now(), duration: Date.now() - startTime });
     } catch (err) {
       console.error(chalk.red(`\n  出错: ${err.message}\n`));
+      history.push({ prompt: input, success: false, time: Date.now(), error: err.message });
     }
 
+    isProcessing = false;
     rl.prompt();
   });
 
   rl.on('close', () => process.exit(0));
+}
+
+/**
+ * 打印户部账目
+ */
+function printCostReport(costs) {
+  console.log();
+  console.log(chalk.bold('  💰 户部账目 — 本朝会花费汇总'));
+  console.log(chalk.gray('  ─────────────────────────────────'));
+
+  if (costs.sessions === 0) {
+    console.log(chalk.gray('  （尚无花费记录）'));
+  } else {
+    console.log(`  ${chalk.white('旨意数:')}       ${chalk.cyan(costs.sessions)}`);
+    console.log(`  ${chalk.white('输入 Token:')}   ${chalk.cyan(costs.inputTokens.toLocaleString())}`);
+    console.log(`  ${chalk.white('输出 Token:')}   ${chalk.cyan(costs.outputTokens.toLocaleString())}`);
+    console.log(`  ${chalk.white('总花费:')}       ${chalk.yellow('$' + costs.totalUsd.toFixed(4))}`);
+
+    // 预算可视化
+    const budgetMax = 5.0;
+    const used = Math.min(costs.totalUsd / budgetMax, 1);
+    const barLen = 25;
+    const filled = Math.round(barLen * used);
+    const barColor = used < 0.5 ? chalk.green : used < 0.8 ? chalk.yellow : chalk.red;
+    const bar = barColor('█'.repeat(filled)) + chalk.gray('░'.repeat(barLen - filled));
+    console.log(`  ${chalk.white('预算:')}         ${bar} ${Math.round(used * 100)}%`);
+  }
+  console.log();
 }
 
 module.exports = { startRepl };
