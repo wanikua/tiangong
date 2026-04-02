@@ -58,8 +58,25 @@ async function startRepl(options) {
   const history = []; // 旨意历史
   let sessionCosts = { totalUsd: 0, inputTokens: 0, outputTokens: 0, sessions: 0 };
   let isProcessing = false; // 防止并发
+  let isFirstSession = history.length === 0; // 新手标记
 
   console.log(makeBanner(currentRegime));
+
+  // ── 新手引导（符合制度人设） ──
+  if (isFirstSession) {
+    if (currentRegime === 'modern') {
+      console.log(chalk.gray('  💡 Welcome! Try these:'));
+      console.log(chalk.white('     Just type naturally: ') + chalk.cyan('"Build a login page"'));
+      console.log(chalk.white('     Ask questions:       ') + chalk.cyan('"What is REST API?"'));
+      console.log(chalk.white('     Type /help for all commands'));
+    } else {
+      console.log(chalk.gray('  💡 司礼监提示陛下：'));
+      console.log(chalk.white('     直接说话即可：') + chalk.cyan('"帮朕写一个登录页面"'));
+      console.log(chalk.white('     问问题也行：  ') + chalk.cyan('"什么是 REST API？"'));
+      console.log(chalk.white('     输入 /help 查看朝堂指令'));
+    }
+    console.log();
+  }
 
   const promptIcons = { ming: '👑', tang: '🐉', modern: '💼' };
   const promptNames = { ming: '天子', tang: '天子', modern: 'CEO' };
@@ -705,11 +722,47 @@ async function startRepl(options) {
     }
 
     // ── 自然语言命令路由 ──
-    // 用户不需要记 /command，用自然语言也能触发功能
     const routed = routeNaturalLanguage(input);
     if (routed) {
-      // 模拟用户输入对应的命令
       rl.emit('line', routed);
+      return;
+    }
+
+    // ── 模糊输入引导（分制度语气） ──
+    if (isVagueInput(input)) {
+      const guides = {
+        ming: {
+          opener: '  司礼监：陛下旨意不够明确，臣斗胆请陛下详述。例如：',
+          examples: [
+            '"帮朕写一个用户登录页面，要用 JWT 认证"',
+            '"审查这段代码有没有 SQL 注入漏洞"',
+            '"把这个应用部署到 Docker 里"',
+          ]
+        },
+        tang: {
+          opener: '  中书令：陛下圣意未明，臣恭请陛下赐示详情。例如：',
+          examples: [
+            '"令兵部编写一套用户认证系统"',
+            '"门下省审核此段代码之安全隐患"',
+            '"工部将此应用以 Docker 部署上线"',
+          ]
+        },
+        modern: {
+          opener: '  System: Could you be more specific? For example:',
+          examples: [
+            '"Build a user login page with JWT authentication"',
+            '"Review this code for SQL injection vulnerabilities"',
+            '"Deploy the application using Docker"',
+          ]
+        }
+      };
+      const g = guides[currentRegime] || guides.ming;
+      console.log(chalk.yellow('\n' + g.opener));
+      for (const ex of g.examples) {
+        console.log(chalk.cyan('    ' + ex));
+      }
+      console.log();
+      rl.prompt();
       return;
     }
 
@@ -809,8 +862,8 @@ function routeNaturalLanguage(input) {
     return '/exit';
   }
 
-  // 帮助
-  if (/^(?:帮助|help|怎么用|有什么功能|能干什么)$/i.test(input)) {
+  // 帮助 / 不会用
+  if (/^(?:帮助|help|怎么用|有什么功能|能干什么|不会用|不会|不知道怎么用|怎么操作|教我|指南|tutorial|how to use)$/i.test(input)) {
     return '/help';
   }
 
@@ -820,6 +873,23 @@ function routeNaturalLanguage(input) {
   }
 
   return null; // 不匹配任何命令模式，走正常的旨意执行流程
+}
+
+/**
+ * 判断输入是否过于模糊（需要引导用户补充细节）
+ * @param {string} input
+ * @returns {boolean}
+ */
+function isVagueInput(input) {
+  const vague = [
+    /^(?:帮我|帮忙)(?:弄|做|搞|整|来)?(?:一下|个|点)?(?:东西|事情|事儿)?[吧呗啊哦]?$/,
+    /^(?:弄一下|做一下|搞一下|来一个|整一个|做个|弄个|搞个)(?:东西|事情|事儿)?[吧呗啊哦]?$/,
+    /^(?:help me|do something|make something|fix it|do it)$/i,
+    /^(?:开始|start|go|run|执行|干活)[吧呗啊哦!！]?$/,
+    /^(?:快|赶紧|马上)[吧呗啊哦]?$/,
+    /^.{1,4}[吧呗啊]$/,  // 极短+语气词，如"写吧"、"来呗"
+  ];
+  return vague.some(p => p.test(input));
 }
 
 /**
