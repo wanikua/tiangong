@@ -162,14 +162,21 @@ tiangong/
 │   └── config/                  # Providers + Regimes + Setup
 ```
 
-## Disclaimer
+## Acknowledgements & References
 
-TianGong is an **independent, original implementation**. It does not contain any proprietary code from Anthropic, OpenAI, or any other company. The architecture is inspired by publicly available concepts in multi-agent systems and the Chinese imperial governance model. All code in this repository is original work released under the MIT License.
+TianGong is an **independent, original implementation**. All code is original work under the MIT License. The following projects provided architectural inspiration:
+
+- **[当皇上 (danghuangshang)](https://github.com/wanikua/danghuangshang)** — AI imperial court tutorial + OpenClaw implementation. TianGong's regime system and agent hierarchy concepts originated here.
+- **[Claude Code Architecture](https://github.com/wanikua/Claude-code-leaks)** — Anthropic's CLI tool architecture study. Inspired our tool system design (Bash/FileRead/FileEdit/Glob/Grep), permission model, and agent loop pattern.
+- **[OpenViking](https://github.com/volcengine/OpenViking)** — ByteDance's open-source context database for AI Agents. Our `viking-store.js` implements the L0/L1/L2 tiered context loading and `viking://` filesystem paradigm described in their paper.
+- **[Thinking Frameworks](https://github.com/wanikua/thinking-frameworks)** — Structured thinking models. Our `wisdom.js` embeds 8 frameworks (MECE, 5 Whys, First Principles, etc.) into agent prompts.
+- **[AgentPark](https://github.com/wanikua/AgentPark)** — Agent marketplace. TianGong's export system generates AgentPark-compatible packages.
 
 ## Related Projects
 
-- [AgentPark](https://github.com/wanikua/AgentPark) — Agent marketplace
-- [Thinking Frameworks](https://github.com/wanikua/thinking-frameworks) — Structured thinking models
+- [AgentPark](https://github.com/wanikua/AgentPark) — Agent marketplace for trained agent teams
+- [Thinking Frameworks](https://github.com/wanikua/thinking-frameworks) — Structured thinking models collection
+- [danghuangshang](https://github.com/wanikua/danghuangshang) — AI imperial court tutorial
 
 ---
 
