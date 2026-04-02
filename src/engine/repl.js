@@ -274,7 +274,8 @@ async function startRepl(options) {
           models.forEach((m, i) => {
             const active = m === currentModel ? chalk.green(' <-- 当前') : '';
             const isDefault = m === provider.defaultModel ? chalk.gray(' (推荐)') : '';
-            console.log(`    ${chalk.cyan(String(i + 1).padStart(2)}) ${m}${isDefault}${active}`);
+            const num = chalk.cyan(String(i + 1).padStart(2));
+            console.log('    ' + num + ') ' + m + isDefault + active);
           });
           console.log(chalk.gray('\n  切换: /model <序号>  或  /model <模型名>'));
         } else {
