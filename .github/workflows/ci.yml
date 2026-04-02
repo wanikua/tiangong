@@ -1,0 +1,106 @@
+name: CI — 朝廷巡检
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: 全面测试 (Node ${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [22, 23]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: 安装依赖
+        run: npm install
+
+      - name: 模块加载测试
+        run: |
+          node -e "
+          const modules = [
+            './src/config/regimes', './src/config/providers', './src/config/defaults',
+            './src/menxia/permission-gate', './src/menxia/security-check',
+            './src/shangshu/bing/file-ops', './src/shangshu/bing/bash', './src/shangshu/bing/tools',
+            './src/shangshu/hu/cost-tracker', './src/shangshu/li/api-client',
+            './src/zhongshu/planner', './src/zhongshu/prompt-builder', './src/zhongshu/wisdom',
+            './src/memory/store', './src/memory/extractor', './src/memory/viking-store',
+            './src/engine/spinner', './src/engine/query-loop',
+            './src/shangshu/dispatcher',
+            './src/export/exporter', './src/export/importer',
+            './src/features/reputation', './src/features/time-travel',
+            './src/features/autopsy', './src/features/pk-arena',
+            './src/features/court-debate', './src/features/collaborative-coding',
+            './src/features/crash-oracle', './src/features/dream-engine',
+            './src/features/imperial-exam', './src/features/treasure-hunt',
+            './src/features/agent-personality', './src/features/self-evolution',
+            './src/features/auto-prompt-optimizer', './src/features/regime-evolution'
+          ];
+          let ok = 0;
+          for (const m of modules) {
+            try { require(m); ok++; }
+            catch(e) { console.error('FAIL:', m, e.message); process.exit(1); }
+          }
+          console.log(ok + '/' + modules.length + ' modules loaded');
+          "
+
+      - name: 核心功能测试
+        run: |
+          node -e "
+          (async () => {
+          const assert = require('assert');
+          let pass=0,fail=0;
+          function ok(n,fn){try{fn();pass++;}catch(e){console.error('FAIL:',n,e.message);fail++;}}
+          async function okA(n,fn){try{await fn();pass++;}catch(e){console.error('FAIL:',n,e.message);fail++;}}
+
+          ok('Planner-ming',()=>{const{generatePlan}=require('./src/zhongshu/planner');assert(generatePlan('写代码','ming').steps.length>=2);});
+          ok('Planner-tang',()=>{const{generatePlan}=require('./src/zhongshu/planner');const p=generatePlan('写代码','tang');assert(p.steps.length>=4);});
+          ok('Planner-modern',()=>{const{generatePlan}=require('./src/zhongshu/planner');assert(generatePlan('写代码','modern').steps.length>=2);});
+          ok('Gate-wildcard',()=>{const{PermissionGate}=require('./src/menxia/permission-gate');assert(new PermissionGate('tang').checkAgentCall('shangshu_ling','bing_bu').allowed);});
+          ok('Gate-deny',()=>{const{PermissionGate}=require('./src/menxia/permission-gate');assert(!new PermissionGate('ming').checkAgentCall('bingbu','hubu').allowed);});
+          ok('Security',()=>{const{checkCommandSafety}=require('./src/menxia/security-check');assert(checkCommandSafety('ls').safe);assert(checkCommandSafety('rm -rf /').blocked);});
+          ok('CostTracker',()=>{const{CostTracker}=require('./src/shangshu/hu/cost-tracker');const c=new CostTracker(5);c.record('a','claude-sonnet-4-6',1000,500);assert(c.usage.totalCostUsd>0);});
+          ok('FileOps',()=>{const{readFile}=require('./src/shangshu/bing/file-ops');assert(readFile('./package.json').content.includes('tiangong'));});
+          await okA('Glob',async()=>{const{executeTool}=require('./src/shangshu/bing/tools');assert((await executeTool('glob',{pattern:'**/*.json'},{cwd:process.cwd()})).includes('package.json'));});
+          ok('PromptBuilder',()=>{const{buildSystemPrompt}=require('./src/zhongshu/prompt-builder');assert(buildSystemPrompt('bingbu','ming').includes('兵部'));});
+          ok('Memory',()=>{const{MemoryStore}=require('./src/memory/store');const m=new MemoryStore();m.saveAgentMemory('_ci',{type:'skill',content:'ci test'});m.wipeAgentMemory('_ci');});
+          ok('VikingStore',()=>{const{vikingStore}=require('./src/memory/viking-store');vikingStore.write('viking://agent/_ci/s',{content:'ci',type:'skill'});vikingStore.remove('viking://agent/_ci/s');});
+          ok('Regimes',()=>{const{getRegime}=require('./src/config/regimes');assert(getRegime('ming').agents.length===10);assert(getRegime('tang').agents.length===9);assert(getRegime('modern').agents.length===8);});
+
+          console.log(fail===0?pass+'/'+pass+' passed':'FAIL: '+fail);
+          process.exit(fail>0?1:0);
+          })();
+          "
+
+      - name: 全流程权限测试 (3制度×8任务)
+        run: |
+          node -e "
+          const assert=require('assert');
+          const{generatePlan}=require('./src/zhongshu/planner');
+          const{PermissionGate}=require('./src/menxia/permission-gate');
+          function sim(p,r){const plan=generatePlan(p,r);const gate=new PermissionGate(r);const d=plan.steps[0].agent;for(let i=1;i<plan.steps.length;i++){const s=plan.steps[i];let c;if(s.task==='review'||s.task==='review_plan'){c=d;if(!gate.checkAgentCall(c,s.agent).allowed){for(let j=i-1;j>=0;j--){if(gate.checkAgentCall(plan.steps[j].agent,s.agent).allowed){c=plan.steps[j].agent;break;}}}}else if(s.dependencies?.length>0){const dep=plan.steps.find(x=>x.id===s.dependencies[0]);c=dep?dep.agent:plan.steps[i-1].agent;}else c=plan.steps[i-1].agent;let ok=gate.checkAgentCall(c,s.agent).allowed;if(!ok)ok=gate.checkAgentCall(d,s.agent).allowed;if(!ok)return false;}return true;}
+          const tasks=['写代码','审查安全','部署docker','财务报表','营销文案','写文章','管理项目','法律合同'];
+          let f=0;
+          for(const r of['ming','tang','modern']){for(const t of tasks){if(!sim(t,r)){console.error('FAIL:',r,t);f++;}}}
+          console.log(f===0?'24/24 flows OK':'FAIL: '+f);
+          process.exit(f>0?1:0);
+          "
+
+      - name: CLI 可用性测试
+        run: |
+          node bin/tiangong.js --version
+          node bin/tiangong.js --help
+          node bin/tiangong.js regimes
+          node bin/tiangong.js --dry-run "test"
+          node bin/tiangong.js --dry-run --regime tang "test"
+          node bin/tiangong.js --dry-run --regime modern "test"
