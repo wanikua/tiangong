@@ -31,20 +31,27 @@ TianGong is a **self-evolving multi-agent AI framework** that maps China's ancie
 **Prerequisites**: [Node.js](https://nodejs.org) >= 22
 
 ```bash
-# 1. Clone
+# 1. Clone & install
 git clone https://github.com/wanikua/tiangong.git
-cd tiangong
+cd tiangong && npm install
 
-# 2. Install dependencies
-npm install
+# 2. Register global command
+npm link
 
-# 3. First run — "Coronation Ceremony" (登基大典)
-#    This will guide you through:
-#      - Choose LLM provider (Anthropic / OpenRouter / Ollama / ...)
-#      - Enter API Key (Ollama = no key needed)
-#      - Choose governance system (Ming / Tang / Modern)
-#      - Choose default model
-node bin/tiangong.js
+# 3. Done! Now use it anywhere:
+tiangong
+```
+
+After `npm link`, just type `tiangong` in any terminal to enter interactive mode. Type your prompt directly — no flags needed, just like Claude Code.
+
+**No commands to memorize!** Natural language works too:
+```
+> Have bingbu and gongbu compete on sorting    ← auto-triggers /pk
+> Let's discuss PostgreSQL vs MongoDB          ← auto-triggers /debate
+> Test bingbu's skills                         ← auto-triggers /exam
+> Everyone work together on an auth module     ← auto-triggers /collab
+> Show me the rankings                         ← auto-triggers /rank
+> How much did it cost                         ← auto-triggers /cost
 ```
 
 ### Using Ollama (Free, Local, No API Key)
@@ -281,17 +288,28 @@ TianGong is an **independent, original implementation**. All code is original wo
 **前置条件**: [Node.js](https://nodejs.org) >= 22
 
 ```bash
-# 1. 克隆项目
+# 1. 安装
 git clone https://github.com/wanikua/tiangong.git
-cd tiangong
+cd tiangong && npm install
 
-# 2. 安装依赖
-npm install
+# 2. 注册全局命令
+npm link
 
-# 3. 首次运行 — 登基大典
-#    会引导你完成：
-#      选择 LLM 提供商 → 输入 API Key → 选择制度 → 选择模型
-node bin/tiangong.js
+# 3. 搞定！随时随地用：
+tiangong
+```
+
+`npm link` 之后，任意终端输入 `tiangong` 即进入交互模式。直接打字说话就行，像 Claude Code 一样简单。
+
+**不用记命令！** 自然语言也能触发功能：
+```
+> 让兵部和工部比一比写排序算法          ← 自动触发 /pk
+> 大家讨论一下用 PostgreSQL 还是 MongoDB  ← 自动触发 /debate
+> 考一考兵部                           ← 自动触发 /exam
+> 大家一起写一个认证模块                 ← 自动触发 /collab
+> 看看排行榜                           ← 自动触发 /rank
+> 花了多少钱                           ← 自动触发 /cost
+> 帮助                                ← 自动触发 /help
 ```
 
 ### 用 Ollama（免费、本地、不需要 API Key）

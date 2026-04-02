@@ -704,6 +704,15 @@ async function startRepl(options) {
       return;
     }
 
+    // ── 自然语言命令路由 ──
+    // 用户不需要记 /command，用自然语言也能触发功能
+    const routed = routeNaturalLanguage(input);
+    if (routed) {
+      // 模拟用户输入对应的命令
+      rl.emit('line', routed);
+      return;
+    }
+
     // ── 执行旨意 ──
 
     isProcessing = true;
@@ -729,6 +738,88 @@ async function startRepl(options) {
   });
 
   rl.on('close', () => process.exit(0));
+}
+
+/**
+ * 自然语言命令路由
+ * 识别用户意图，自动映射到对应的 /command
+ * @param {string} input
+ * @returns {string|null} 映射后的命令，或 null（走正常旨意流程）
+ */
+function routeNaturalLanguage(input) {
+  const lower = input.toLowerCase();
+
+  // PK / 对决 / 比赛
+  const pkMatch = input.match(/(?:让|叫|请)?(.+?)(?:和|与|vs|VS|跟|对战|比试|PK|pk)(.+?)(?:比一比|对决|比赛|竞赛|PK|pk)?[，,]?\s*(?:题目|任务|问题)?[：:]?\s*[「"']?(.+?)[」"']?\s*$/);
+  if (pkMatch) {
+    const a1 = pkMatch[1].trim();
+    const a2 = pkMatch[2].trim();
+    const task = pkMatch[3]?.trim();
+    if (a1 && a2 && task) return `/pk ${a1} ${a2} "${task}"`;
+  }
+  if (/(?:pk|PK|对决|比试|擂台).+/i.test(lower) && !lower.startsWith('/')) {
+    return null; // 有 PK 意图但格式不够明确，走正常流程
+  }
+
+  // 廷议 / 辩论 / 讨论
+  if (/^(?:大家)?(?:讨论|辩论|廷议|商议|议一议|聊一聊|分析一下)(?:一下)?[：:]?\s*(.+)/.test(input)) {
+    const topic = input.replace(/^(?:大家)?(?:讨论|辩论|廷议|商议|议一议|聊一聊|分析一下)(?:一下)?[：:]?\s*/, '').trim();
+    if (topic) return `/debate "${topic}"`;
+  }
+
+  // 科举 / 考试
+  if (/(?:考一考|测试一下|考核|科举)(.+)/.test(input)) {
+    const match = input.match(/(?:考一考|测试一下|考核|科举)\s*(.+)/);
+    if (match) return `/exam ${match[1].trim()}`;
+  }
+
+  // 排行 / 排名 / 功勋
+  if (/^(?:看看|查看)?(?:排行|排名|功勋|战绩|谁最厉害|谁最强)/.test(input)) {
+    return '/rank';
+  }
+
+  // 花了多少钱 / 费用
+  if (/(?:花了多少|费用|成本|多少钱|token|预算)/.test(lower)) {
+    return '/cost';
+  }
+
+  // 协同 / 一起
+  if (/^(?:大家一起|所有人|协同|联名|多人一起)(?:来)?(.+)/.test(input)) {
+    const task = input.replace(/^(?:大家一起|所有人|协同|联名|多人一起)(?:来)?/, '').trim();
+    if (task) return `/collab "${task}"`;
+  }
+
+  // 朝廷 / 架构 / 百官
+  if (/^(?:看看|查看)?(?:朝廷|架构|百官|大臣|谁在)/.test(input)) {
+    return '/court';
+  }
+
+  // 性格 / MBTI
+  if (/(?:性格|MBTI|mbti|星座|人格)/.test(input)) {
+    return '/personality';
+  }
+
+  // 寻宝
+  if (/(?:寻宝|宝藏|探索|treasure)/i.test(lower)) {
+    return '/treasure hunt';
+  }
+
+  // 退朝 / 退出 / 拜拜
+  if (/^(?:退朝|退出|再见|拜拜|bye|exit|quit)$/i.test(input)) {
+    return '/exit';
+  }
+
+  // 帮助
+  if (/^(?:帮助|help|怎么用|有什么功能|能干什么)$/i.test(input)) {
+    return '/help';
+  }
+
+  // 清屏
+  if (/^(?:清屏|clear)$/i.test(input)) {
+    return '/clear';
+  }
+
+  return null; // 不匹配任何命令模式，走正常的旨意执行流程
 }
 
 /**
