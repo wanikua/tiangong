@@ -23,12 +23,17 @@ function globMatch(pattern, dir, maxResults = 100) {
 
   // 将 glob pattern 转为正则
   function patternToRegex(pat) {
+    // 先处理 ** 和 *（避免 . 转义影响 *）
     let regex = pat
-      .replace(/\./g, '\\.')
-      .replace(/\*\*/g, '⟨GLOBSTAR⟩')
-      .replace(/\*/g, '[^/]*')
-      .replace(/⟨GLOBSTAR⟩/g, '.*')
-      .replace(/\?/g, '[^/]');
+      .replace(/\*\*\//g, '\x00GLOBSTAR_SLASH\x00')  // 占位
+      .replace(/\*\*/g, '\x00GLOBSTAR\x00')
+      .replace(/\*/g, '\x00STAR\x00')
+      .replace(/\?/g, '\x00QUESTION\x00')
+      .replace(/\./g, '\\.')                          // 转义 .
+      .replace(/\x00GLOBSTAR_SLASH\x00/g, '(.*\\/)?') // **/ = 零个或多个目录
+      .replace(/\x00GLOBSTAR\x00/g, '.*')             // ** = 任意
+      .replace(/\x00STAR\x00/g, '[^/]*')              // * = 非目录分隔符
+      .replace(/\x00QUESTION\x00/g, '[^/]');           // ? = 单个字符
     return new RegExp(`^${regex}$`);
   }
 
