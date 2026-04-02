@@ -2,6 +2,8 @@
 
 ### An AI Agent Framework Inspired by Ancient Chinese Governance | 三省六部制 AI Agent 框架
 
+> Created by **菠萝菠菠** 🍍
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/badge/Node.js-≥22-green.svg)](https://nodejs.org)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)

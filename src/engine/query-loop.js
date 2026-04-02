@@ -85,10 +85,12 @@ async function startSession(prompt, options = {}) {
     return;
   }
 
-  // ── 快速路径：简单对话直接调 LLM，跳过权限检查/工具/审查 ──
+  // ── 快速路径：单 Agent + 完整工具，跳过多 Agent 审核流程 ──
+  // 像 Claude Code 一样：能读文件、跑命令、改代码，但不需要六部会审
   if (isSimpleChat(prompt)) {
-    const { callLLM } = require('../shangshu/li/api-client');
+    const { callLLM, callLLMStreaming } = require('../shangshu/li/api-client');
     const { buildSystemPrompt } = require('../zhongshu/prompt-builder');
+    const { getToolSchemas, executeTool } = require('../shangshu/bing/tools');
 
     const chatSpinner = new Spinner({ color: 'cyan' });
     const chatAgent = plan.steps[0].agent;
@@ -96,32 +98,141 @@ async function startSession(prompt, options = {}) {
 
     try {
       const systemPrompt = buildSystemPrompt(chatAgent, regimeId, { cwd: process.cwd() });
-      const response = await callLLM({
-        model,
-        providerId: options.provider,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: prompt }],
-        tools: [],       // 不发工具，纯对话
-        maxTokens: 1024, // 简单回答不需要太长
-        _tiangong: { taskType: 'chat', agentId: chatAgent, isSimple: true }
-      });
+      const tools = getToolSchemas();
+      const messages = [{ role: 'user', content: prompt }];
+      const cwd = process.cwd();
+      let finalContent = '';
+      const MAX_ROUNDS = 15;
 
-      chatSpinner.succeed(chalk.cyan(`[${chatAgent}]`) + ' 完成');
+      // ── 工具调用循环（和 Claude Code 一样，LLM 可以多轮使用工具）──
+      let useStreaming = false;
+      for (let round = 0; round < MAX_ROUNDS; round++) {
+        // 最后回复尝试流式输出（非工具轮）
+        if (useStreaming) {
+          chatSpinner.stop();
+          // 输出框头
+          console.log(chalk.gray(`  ┌─ ${chatAgent} 回奏 ─────────────────────────────`));
+          process.stdout.write(chalk.gray('  │ '));
 
-      // 直接输出回答
-      console.log();
-      console.log(chalk.gray(`  ┌─ ${chatAgent} 回奏 ─────────────────────────────`));
-      const lines = (response.content || '').split('\n');
-      for (const line of lines) {
-        console.log(chalk.gray('  │ ') + chalk.white(line));
+          let lineBuffer = '';
+          const streamResponse = await callLLMStreaming({
+            model, providerId: options.provider, system: systemPrompt,
+            messages, tools, maxTokens: 4096,
+            _tiangong: { taskType: 'chat', agentId: chatAgent, isSimple: true }
+          }, (text) => {
+            // 流式文本 delta → 实时输出
+            for (const ch of text) {
+              if (ch === '\n') {
+                process.stdout.write('\n' + chalk.gray('  │ '));
+              } else {
+                process.stdout.write(ch);
+              }
+            }
+            lineBuffer += text;
+          });
+
+          finalContent = streamResponse.content;
+          process.stdout.write('\n');
+          console.log(chalk.gray('  └──────────────────────────────────────────────'));
+
+          // 如果流式回复里有工具调用，继续循环
+          if (streamResponse.toolCalls?.length > 0) {
+            // 需要继续工具循环但已经流式输出了部分内容
+            // 不太常见，回退到非流式继续
+            useStreaming = false;
+            continue;
+          }
+          break;
+        }
+
+        const response = await callLLM({
+          model,
+          providerId: options.provider,
+          system: systemPrompt,
+          messages,
+          tools,
+          maxTokens: 4096,
+          _tiangong: { taskType: 'chat', agentId: chatAgent, isSimple: true }
+        });
+
+        if (response.content) {
+          finalContent = response.content;
+        }
+
+        // 没有工具调用 → 结束循环（如果还有后续轮次，用流式）
+        if (!response.toolCalls || response.toolCalls.length === 0) {
+          break;
+        }
+
+        // 更新 spinner 显示工具调用
+        const toolNames = response.toolCalls.map(tc => tc.name).join(', ');
+        chatSpinner.update(chalk.cyan(`[${chatAgent}]`) + chalk.gray(` 🔧 ${toolNames}...`));
+
+        // 构建 assistant 消息（含 tool_use blocks）
+        const config = loadConfig() || {};
+        const providerId = options.provider || config.provider || 'anthropic';
+        const isAnthropic = providerId === 'anthropic';
+
+        if (isAnthropic) {
+          const assistantBlocks = [];
+          if (response.content) assistantBlocks.push({ type: 'text', text: response.content });
+          for (const tc of response.toolCalls) {
+            assistantBlocks.push({ type: 'tool_use', id: tc.id, name: tc.name, input: tc.input });
+          }
+          messages.push({ role: 'assistant', content: assistantBlocks });
+        } else {
+          const msg = { role: 'assistant' };
+          if (response.content) msg.content = response.content;
+          msg.tool_calls = response.toolCalls.map(tc => ({
+            id: tc.id, type: 'function',
+            function: { name: tc.name, arguments: JSON.stringify(tc.input) }
+          }));
+          messages.push(msg);
+        }
+
+        // 执行每个工具并喂回结果
+        for (const tc of response.toolCalls) {
+          let toolResult;
+          try {
+            toolResult = await executeTool(tc.name, tc.input, { cwd, agentId: chatAgent });
+          } catch (err) {
+            toolResult = `工具执行失败: ${err.message}`;
+          }
+          if (typeof toolResult !== 'string') toolResult = toolResult ? String(toolResult) : '(无结果)';
+          if (toolResult.length > 50000) toolResult = toolResult.slice(0, 50000) + '\n... (截断)';
+
+          if (isAnthropic) {
+            messages.push({ role: 'user', content: [{ type: 'tool_result', tool_use_id: tc.id, content: toolResult }] });
+          } else {
+            messages.push({ role: 'tool', tool_call_id: tc.id, content: toolResult });
+          }
+        }
+
+        // 工具执行完毕，下一轮用流式输出
+        useStreaming = true;
+        chatSpinner.update(chalk.cyan(`[${chatAgent}]`) + ' 思考中...');
       }
-      console.log(chalk.gray('  └──────────────────────────────────────────────'));
+
+      // 如果没走流式路径（第一轮就直接回答了），用普通输出
+      if (!useStreaming || !finalContent) {
+        chatSpinner.succeed(chalk.cyan(`[${chatAgent}]`) + ' 完成');
+      }
+
+      // 只在非流式时输出回奏框（流式路径已经在循环内输出了）
+      if (!useStreaming && finalContent) {
+        console.log();
+        console.log(chalk.gray(`  ┌─ ${chatAgent} 回奏 ─────────────────────────────`));
+        const lines = (finalContent || '').split('\n');
+        for (const line of lines) {
+          console.log(chalk.gray('  │ ') + chalk.white(line));
+        }
+        console.log(chalk.gray('  └──────────────────────────────────────────────'));
+      }
+
       console.log();
       console.log(chalk.green(`  🏛️  ${L.done}`));
 
       const elapsed = formatDuration(Date.now() - sessionStart);
-      const inputTokens = response.usage?.input_tokens || response.usage?.prompt_tokens || 0;
-      const outputTokens = response.usage?.output_tokens || response.usage?.completion_tokens || 0;
       console.log();
       console.log(chalk.gray('  ─────────────────────────────────────────────'));
       console.log(chalk.gray(`  💬 快速回答 | ⏱ ${elapsed}`));

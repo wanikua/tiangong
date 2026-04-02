@@ -18,84 +18,7 @@ const { PROVIDERS, listProviders, saveApiKey, getApiKey } = require('./providers
 const CONFIG_DIR = path.join(process.env.HOME || '/tmp', '.tiangong');
 const CONFIG_PATH = path.join(CONFIG_DIR, 'config.json');
 
-// ─── 登基动画素材 ────────────────────────────────────
-
-// 第一幕：午门（宫门大开）
-const PALACE_GATE = () => `
-${chalk.red('      ╔══════════════════════════════════════════════════╗')}
-${chalk.red('      ║')}${chalk.yellow('  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░')}${chalk.red('║')}
-${chalk.red('      ║')}${chalk.yellow('  ░░')}${chalk.red.bold('██████████████████  午门  ██████████████████')}${chalk.yellow('░░')}${chalk.red('║')}
-${chalk.red('      ║')}${chalk.yellow('  ░░')}${chalk.red('██')}                                      ${chalk.red('██')}${chalk.yellow('░░')}${chalk.red('║')}
-${chalk.red('      ║')}${chalk.yellow('  ░░')}${chalk.red('██')}    ${chalk.bold.yellow('~ ~ ~ 登 基 大 典 ~ ~ ~')}         ${chalk.red('██')}${chalk.yellow('░░')}${chalk.red('║')}
-${chalk.red('      ║')}${chalk.yellow('  ░░')}${chalk.red('██')}                                      ${chalk.red('██')}${chalk.yellow('░░')}${chalk.red('║')}
-${chalk.red('      ║')}${chalk.yellow('  ░░')}${chalk.red('██████████████████████████████████████████')}${chalk.yellow('░░')}${chalk.red('║')}
-${chalk.red('      ║')}${chalk.yellow('  ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░')}${chalk.red('║')}
-${chalk.red('      ╚══════════════════════════════════════════════════╝')}
-`;
-
-// 第二幕：皇帝坐上龙椅（核心画面）
-const EMPEROR_ON_THRONE = () => `
-${chalk.yellow('                          _===_')}
-${chalk.yellow('                         /  |  \\')}
-${chalk.yellow('                        | ') + chalk.red.bold('crown') + chalk.yellow(' |')}
-${chalk.yellow('                         \\__') + chalk.red.bold('V') + chalk.yellow('__/')}
-${chalk.yellow('                          |') + chalk.red.bold(':') + chalk.yellow('|')}
-${chalk.yellow('                     _____|') + chalk.red.bold(':') + chalk.yellow('|_____')}
-${chalk.yellow('                    |') + chalk.red('  龙 袍 龙 袍 ') + chalk.yellow('|')}
-${chalk.yellow('                    |') + chalk.red('    天  子    ') + chalk.yellow('|')}
-${chalk.yellow('                    |') + chalk.red(' 御 极 天 下 ') + chalk.yellow('|')}
-${chalk.yellow('                    |_____________|')}
-${chalk.yellow('                       /     \\')}
-${chalk.yellow('                      /       \\')}
-
-${chalk.yellow('         ╔═══════════════════════════════════╗')}
-${chalk.yellow('         ║') + chalk.red.bold('    天 工 开 物  ·  三 省 六 部     ') + chalk.yellow('║')}
-${chalk.yellow('         ╚═══════════════════════════════════╝')}
-`;
-
-// 第三幕：金銮殿全景
-const COURT_SCENE = () => `
-${chalk.yellow('    ════════════════════════════════════════════════════')}
-${chalk.yellow('    ║') + chalk.red.bold('                    金   銮   殿                   ') + chalk.yellow('║')}
-${chalk.yellow('    ════════════════════════════════════════════════════')}
-${chalk.yellow('    ║')}                                                    ${chalk.yellow('║')}
-${chalk.yellow('    ║')}          ${chalk.yellow('龙')}                          ${chalk.yellow('龙')}          ${chalk.yellow('║')}
-${chalk.yellow('    ║')}          ${chalk.yellow('柱')}      ${chalk.red.bold(' ___________')}       ${chalk.yellow('柱')}          ${chalk.yellow('║')}
-${chalk.yellow('    ║')}          ${chalk.yellow('|')}      ${chalk.red.bold('|  ') + chalk.yellow.bold('天  子') + chalk.red.bold('   |')}       ${chalk.yellow('|')}          ${chalk.yellow('║')}
-${chalk.yellow('    ║')}          ${chalk.yellow('|')}      ${chalk.red.bold('|  ') + chalk.yellow.bold('龙  椅') + chalk.red.bold('   |')}       ${chalk.yellow('|')}          ${chalk.yellow('║')}
-${chalk.yellow('    ║')}          ${chalk.yellow('|')}      ${chalk.red.bold('|___________|')}       ${chalk.yellow('|')}          ${chalk.yellow('║')}
-${chalk.yellow('    ║')}                                                    ${chalk.yellow('║')}
-${chalk.yellow('    ║')}     ${chalk.cyan('[ 中书省 ]')}    ${chalk.blue('[ 门下省 ]')}    ${chalk.magenta('[ 尚书省 ]')}     ${chalk.yellow('║')}
-${chalk.yellow('    ║')}     ${chalk.cyan('  起 草')}       ${chalk.blue('  审 核')}       ${chalk.magenta('  执 行')}        ${chalk.yellow('║')}
-${chalk.yellow('    ║')}                                                    ${chalk.yellow('║')}
-${chalk.yellow('    ║')}  ${chalk.white('[吏]')} ${chalk.yellow('[户]')} ${chalk.magenta('[礼]')} ${chalk.red('[兵]')} ${chalk.blue('[刑]')} ${chalk.green('[工]')}    ${chalk.gray('<-- 六部候旨')}  ${chalk.yellow('║')}
-${chalk.yellow('    ║')}                                                    ${chalk.yellow('║')}
-${chalk.yellow('    ║')}  ${chalk.gray('  臣  臣  臣  臣  臣  臣  臣  臣  臣  臣  臣')}    ${chalk.yellow('║')}
-${chalk.yellow('    ║')}  ${chalk.gray('  oo  oo  oo  oo  oo  oo  oo  oo  oo  oo  oo')}    ${chalk.yellow('║')}
-${chalk.yellow('    ║')}          ${chalk.gray('「 百 官 跪 拜  恭 迎 圣 驾 」')}            ${chalk.yellow('║')}
-${chalk.yellow('    ║')}                                                    ${chalk.yellow('║')}
-${chalk.yellow('    ════════════════════════════════════════════════════')}
-`;
-
-// 第四幕：龙印玉玺
-const IMPERIAL_SEAL = () => `
-${chalk.red('                  ┌─────────────────┐')}
-${chalk.red('                  │  ╔═══════════╗  │')}
-${chalk.red('                  │  ║') + chalk.yellow.bold(' 天 工 之 ') + chalk.red('║  │')}
-${chalk.red('                  │  ║') + chalk.yellow.bold('   玺     ') + chalk.red('║  │')}
-${chalk.red('                  │  ╚═══════════╝  │')}
-${chalk.red('                  └─────────────────┘')}
-`;
-
-const CORONATION_STEPS = [
-  { text: '  鸣钟九响，午门大开 ........', delay: 500, color: 'yellow' },
-  { text: '  文武百官，入殿候旨 ........', delay: 400, color: 'white' },
-  { text: '  宣读诏书，改元天工 ........', delay: 400, color: 'cyan' },
-  { text: '  龙袍加身，冕旒垂珠 ........', delay: 400, color: 'red' },
-  { text: '  授天子剑，赐传国玺 ........', delay: 400, color: 'yellow' },
-  { text: '  三省六部，各就其位 ........', delay: 400, color: 'magenta' },
-  { text: '  天工元年，朝廷初立 ........', delay: 500, color: 'green' },
-];
+// （ASCII art 已精简，登基动画改为简洁版）
 
 // ─── 动画工具 ────────────────────────────────────────
 
@@ -134,62 +57,46 @@ async function playCoronation() {
 
   clearScreen();
 
-  // 第一幕：午门大开
-  await sleep(300);
-  await fadeInLines(PALACE_GATE(), 100);
-  await sleep(1200);
+  // 简洁版：一屏搞定，快速有气势
+  const banner = `
+${chalk.yellow('    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')}
 
-  // 第二幕：百官列阵，金銮殿全景
-  clearScreen();
-  await fadeInLines(COURT_SCENE(), 50);
-  await sleep(1000);
+${chalk.red.bold('                    天 工 开 物')}
+${chalk.gray('                 TianGong · AI Agents')}
+${chalk.gray('                    by 菠萝菠菠')}
 
-  // 第三幕：登基仪式逐步推进
-  clearScreen();
-  console.log();
-  console.log(chalk.yellow.bold('    ╔════════════════════════════════════════╗'));
-  console.log(chalk.yellow.bold('    ║         登  基  仪  式  进  行         ║'));
-  console.log(chalk.yellow.bold('    ╚════════════════════════════════════════╝'));
-  console.log();
+${chalk.yellow('                    ⚡ 登 基 大 典 ⚡')}
 
-  for (const step of CORONATION_STEPS) {
-    const colorFn = chalk[step.color] || chalk.white;
-    await typewrite(colorFn(`    ${step.text}`), 35);
-    // 模拟进度条
-    process.stdout.write(colorFn('    '));
-    const barLen = 20;
-    for (let i = 0; i < barLen; i++) {
-      process.stdout.write(colorFn('█'));
-      await sleep(step.delay / barLen);
-    }
-    console.log(chalk.green(' ✓'));
-    await sleep(100);
+${chalk.yellow('    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')}
+`;
+  console.log(banner);
+  await sleep(400);
+
+  // 快速步骤（不用进度条，直接打勾）
+  const steps = [
+    ['yellow',  '鸣钟开朝'],
+    ['white',   '百官就位'],
+    ['cyan',    '宣读诏书'],
+    ['red',     '龙袍加身'],
+    ['yellow',  '授天子剑'],
+    ['magenta', '三省六部各就其位'],
+    ['green',   '天工元年，朝廷初立'],
+  ];
+
+  for (const [color, text] of steps) {
+    const colorFn = chalk[color] || chalk.white;
+    console.log(`    ${chalk.green('✓')} ${colorFn(text)}`);
+    await sleep(120);
   }
 
-  await sleep(500);
-
-  // 第四幕：皇帝坐上龙椅
-  clearScreen();
-  await fadeInLines(EMPEROR_ON_THRONE(), 60);
-  await sleep(800);
-
-  // 第五幕：盖玉玺
-  await fadeInLines(IMPERIAL_SEAL(), 80);
-  await sleep(600);
-
-  // 第六幕：圣旨宣读
   console.log();
-  await typewrite(chalk.bold.red('      「天工元年，朕御极天下，百工听命！」'), 70);
+  console.log(chalk.red.bold('    「天工元年，朕御极天下，百工听命！」'));
   console.log();
-  await typewrite(chalk.bold.yellow('      「三省六部各司其职，违令者斩！」'), 70);
-  console.log();
-  await sleep(600);
+  await sleep(300);
 
-  // 过渡到配置
   console.log(chalk.yellow('    ──────────────────────────────────────────'));
-  console.log();
-  await typewrite(chalk.white('    司礼监：陛下，臣为您备好了朝廷章程。'), 25);
-  await typewrite(chalk.white('           请御览并钦定以下事项：'), 25);
+  console.log(chalk.white('    司礼监：陛下，臣为您备好了朝廷章程。'));
+  console.log(chalk.white('           请御览并钦定以下事项：'));
   console.log();
 }
 
@@ -198,33 +105,23 @@ async function playCoronation() {
 async function playCoronationComplete(config, providerName, model, regime) {
   clearScreen();
 
-  const COMPLETE_ART = `
-${chalk.yellow('    ════════════════════════════════════════════════════')}
-${chalk.yellow('    ║')}                                                    ${chalk.yellow('║')}
-${chalk.yellow('    ║')}     ${chalk.red.bold('★')} ${chalk.bold.yellow('登 基 大 成 ！  天 下 太 平 ！')} ${chalk.red.bold('★')}        ${chalk.yellow('║')}
-${chalk.yellow('    ║')}                                                    ${chalk.yellow('║')}
-${chalk.yellow('    ║')}        ${chalk.yellow('_===_')}                                      ${chalk.yellow('║')}
-${chalk.yellow('    ║')}       ${chalk.yellow('/     \\')}     ${chalk.white('年号:  ')}${chalk.cyan.bold('天工')}                   ${chalk.yellow('║')}
-${chalk.yellow('    ║')}      ${chalk.yellow('| ') + chalk.red.bold('V V') + chalk.yellow(' |')}     ${chalk.white('制度:  ')}${chalk.cyan.bold(regime)}${' '.repeat(Math.max(0, 19 - regime.length))}${chalk.yellow('║')}
-${chalk.yellow('    ║')}       ${chalk.yellow('\\') + chalk.red(' _ ') + chalk.yellow('/')}      ${chalk.white('模型:  ')}${chalk.cyan.bold(model)}${' '.repeat(Math.max(0, 19 - model.length))}${chalk.yellow('║')}
-${chalk.yellow('    ║')}       ${chalk.yellow(' |') + chalk.red(':') + chalk.yellow('|')}       ${chalk.white('军师:  ')}${chalk.cyan.bold(providerName)}${' '.repeat(Math.max(0, 19 - providerName.length))}${chalk.yellow('║')}
-${chalk.yellow('    ║')}     ${chalk.red('__|') + chalk.red(':') + chalk.red('|__')}                                      ${chalk.yellow('║')}
-${chalk.yellow('    ║')}    ${chalk.red('|  龙袍  |')}    ${chalk.gray('~/.tiangong/config.json')}       ${chalk.yellow('║')}
-${chalk.yellow('    ║')}    ${chalk.red('|_______|')}                                      ${chalk.yellow('║')}
-${chalk.yellow('    ║')}                                                    ${chalk.yellow('║')}
-${chalk.yellow('    ════════════════════════════════════════════════════')}
-`;
-
-  await fadeInLines(COMPLETE_ART, 50);
-
   console.log();
-  await typewrite(chalk.yellow('    司礼监：陛下，朝廷已立，可以下旨了。'), 25);
+  console.log(chalk.yellow('    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'));
+  console.log(chalk.green.bold('              ⚡ 登 基 大 成 ！ 天 下 太 平 ！ ⚡'));
+  console.log(chalk.yellow('    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'));
+  console.log();
+  console.log(chalk.white('    年号:  ') + chalk.cyan.bold('天工'));
+  console.log(chalk.white('    制度:  ') + chalk.cyan.bold(regime));
+  console.log(chalk.white('    模型:  ') + chalk.cyan.bold(model));
+  console.log(chalk.white('    军师:  ') + chalk.cyan.bold(providerName));
+  console.log(chalk.gray('    配置:  ~/.tiangong/config.json'));
+  console.log();
+  console.log(chalk.yellow('    司礼监：陛下，朝廷已立，可以下旨了。'));
   console.log();
   console.log(chalk.white('    用法：'));
   console.log(chalk.gray('      tiangong "帮朕写一个登录页面"'));
   console.log(chalk.gray('      tiangong --regime tang "以唐制审查此代码"'));
-  console.log(chalk.gray('      tiangong court                 <- 查看朝廷架构'));
-  console.log(chalk.gray('      tiangong memory --agent bingbu  <- 查看兵部记忆'));
+  console.log(chalk.gray('      tiangong                       <- 交互模式'));
   console.log();
 }
 
@@ -234,7 +131,12 @@ function needsSetup() {
   if (!fs.existsSync(CONFIG_PATH)) return true;
   try {
     const config = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
-    return !config.provider || !config.apiKeys?.[config.provider];
+    if (!config.provider) return true;
+    // 本地模型 (Ollama/LM Studio) 不需要 API Key
+    const { getProvider } = require('./providers');
+    const provider = getProvider(config.provider);
+    if (provider?.local) return false;
+    return !config.apiKeys?.[config.provider];
   } catch { return true; }
 }
 

@@ -66,4 +66,57 @@ function checkCommandSafety(command) {
   };
 }
 
-module.exports = { checkCommandSafety, DANGEROUS_PATTERNS };
+/**
+ * 通用工具权限检查（参考 Claude Code canUseTool 模式）
+ *
+ * 三级权限：
+ *   allow  — 自动放行（read-only 工具）
+ *   ask    — 需要确认（write 工具、bash 中高危命令）
+ *   deny   — 直接拒绝（critical 级别危险操作）
+ *
+ * @param {string} toolName - 工具名
+ * @param {object} input - 工具输入
+ * @param {object} [options] - { autoApprove: boolean }
+ * @returns {{ decision: 'allow'|'ask'|'deny', reason?: string }}
+ */
+function checkToolPermission(toolName, input, options = {}) {
+  // read-only 工具自动放行
+  const READ_ONLY_TOOLS = ['read_file', 'glob', 'grep', 'list_dir'];
+  if (READ_ONLY_TOOLS.includes(toolName)) {
+    return { decision: 'allow' };
+  }
+
+  // bash 命令走详细安全检查
+  if (toolName === 'bash' && input.command) {
+    const safety = checkCommandSafety(input.command);
+    if (safety.blocked) {
+      return { decision: 'deny', reason: safety.risks.map(r => r.desc).join(', ') };
+    }
+    if (safety.requiresConfirmation && !options.autoApprove) {
+      return { decision: 'ask', reason: safety.risks.map(r => r.desc).join(', ') };
+    }
+    return { decision: 'allow' };
+  }
+
+  // write_file: 检查是否写入敏感路径
+  if (toolName === 'write_file' || toolName === 'edit_file') {
+    const filePath = input.file_path || '';
+    const sensitivePatterns = [
+      /\.env$/,
+      /\.ssh\//,
+      /credentials/i,
+      /secret/i,
+      /\/etc\//,
+      /password/i
+    ];
+    if (sensitivePatterns.some(p => p.test(filePath))) {
+      return { decision: 'ask', reason: `写入敏感文件: ${filePath}` };
+    }
+    return { decision: 'allow' };
+  }
+
+  // 未知工具默认放行
+  return { decision: 'allow' };
+}
+
+module.exports = { checkCommandSafety, checkToolPermission, DANGEROUS_PATTERNS };

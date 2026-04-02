@@ -118,10 +118,39 @@ async function callLLM(params) {
   // 实际路由完全靠用户配的 baseUrl，不做隐式劫持
   probeUncommonRoute().catch(() => {});
 
-  if (providerId === 'anthropic') {
-    return callAnthropic({ ...params, model, apiKey, baseUrl, tiangongMeta });
-  } else {
-    return callOpenAICompatible({ ...params, model, apiKey, baseUrl, providerId, tiangongMeta });
+  // ── 调用 + 错误自动恢复（参考 Claude Code recovery loops）──
+  const callFn = providerId === 'anthropic' ? callAnthropic : callOpenAICompatible;
+  const callParams = { ...params, model, apiKey, baseUrl, tiangongMeta, providerId };
+  const maxRetries = params._retryCount || 0;
+
+  try {
+    return await callFn(callParams);
+  } catch (err) {
+    const msg = err.message || '';
+
+    // 恢复 1: max_output_tokens → 升级到 64k 重试（最多 3 次）
+    if (msg.includes('max_output_tokens') || msg.includes('length') && maxRetries < 3) {
+      const biggerTokens = Math.min((params.maxTokens || 4096) * 4, 65536);
+      return callLLM({ ...params, maxTokens: biggerTokens, _retryCount: maxRetries + 1 });
+    }
+
+    // 恢复 2: prompt_too_long (413) → 截断 messages 保留首尾，重试
+    if ((msg.includes('413') || msg.includes('too long') || msg.includes('too large')) && maxRetries < 2) {
+      const msgs = params.messages || [];
+      if (msgs.length > 4) {
+        // 保留第一条（用户原始输入）和最后 2 条（最近上下文），丢弃中间
+        const trimmed = [msgs[0], ...msgs.slice(-2)];
+        return callLLM({ ...params, messages: trimmed, _retryCount: maxRetries + 1 });
+      }
+    }
+
+    // 恢复 3: 速率限制 → 等一下重试
+    if (msg.includes('429') && maxRetries < 2) {
+      await new Promise(r => setTimeout(r, 2000 * (maxRetries + 1)));
+      return callLLM({ ...params, _retryCount: maxRetries + 1 });
+    }
+
+    throw err;
   }
 }
 
@@ -334,4 +363,174 @@ function safeJsonParse(str) {
   try { return JSON.parse(str); } catch { return {}; }
 }
 
-module.exports = { callLLM, probeUncommonRoute, resetUncommonRouteProbe, isUncommonRouteActive };
+/**
+ * 流式调用 LLM API（SSE）
+ * 参考 Claude Code 的 queryModelWithStreaming
+ *
+ * @param {object} params - 同 callLLM 参数
+ * @param {function} onText - 文本 delta 回调 (text: string)
+ * @param {function} [onToolUse] - 工具调用回调 (toolCall: object)
+ * @returns {Promise<{ content: string, toolCalls: Array, usage: object }>}
+ */
+async function callLLMStreaming(params, onText, onToolUse) {
+  const config = loadConfig() || {};
+  const providerId = params.providerId || config.provider || 'anthropic';
+  const provider = getProvider(providerId);
+  if (!provider) throw new Error(`未知的 LLM 提供商: ${providerId}`);
+
+  const apiKey = params.apiKey || getApiKey(providerId);
+  if (!apiKey && !provider.local) throw new Error(`未配置 API Key，请运行 tiangong setup`);
+
+  const model = params.model || config.model || provider.defaultModel;
+  const configProviderMatch = providerId === config.provider;
+  const baseUrl = (configProviderMatch ? config.baseUrl : null) || provider.baseUrl;
+
+  // 构建请求体（OpenAI 兼容格式统一处理）
+  const body = { model, max_tokens: params.maxTokens || 4096, stream: true };
+
+  if (providerId === 'anthropic') {
+    body.messages = params.messages;
+    if (params.system) body.system = params.system;
+    if (params.tools?.length > 0) body.tools = params.tools;
+  } else {
+    body.messages = [];
+    if (params.system) body.messages.push({ role: 'system', content: params.system });
+    body.messages.push(...params.messages);
+    if (params.tools?.length > 0) {
+      body.tools = params.tools.map(t => ({ type: 'function', function: { name: t.name, description: t.description, parameters: t.input_schema } }));
+    }
+  }
+
+  const url = providerId === 'anthropic'
+    ? `${baseUrl}/v1/messages`
+    : `${baseUrl}/chat/completions`;
+
+  const headers = { 'content-type': 'application/json' };
+  if (providerId === 'anthropic') {
+    headers['x-api-key'] = apiKey;
+    headers['anthropic-version'] = '2023-06-01';
+  } else if (apiKey && apiKey !== 'local') {
+    headers['authorization'] = `Bearer ${apiKey}`;
+  }
+  if (providerId === 'openrouter') {
+    headers['http-referer'] = 'https://github.com/wanikua/tiangong';
+    headers['x-title'] = 'tiangong';
+  }
+
+  // 天工元信息
+  const m = params._tiangong || {};
+  if (m.taskType) headers['x-tiangong-task'] = m.taskType;
+  if (m.agentId) headers['x-tiangong-agent'] = m.agentId;
+  if (m.isSimple) headers['x-tiangong-simple'] = '1';
+
+  return new Promise((resolve, reject) => {
+    const parsed = new URL(url);
+    const lib = parsed.protocol === 'https:' ? https : http;
+    const data = JSON.stringify(body);
+
+    let fullContent = '';
+    const toolCalls = [];
+    let currentToolCall = null;
+    let usage = {};
+
+    const req = lib.request({
+      hostname: parsed.hostname,
+      port: parsed.port,
+      path: parsed.pathname + parsed.search,
+      method: 'POST',
+      headers: { ...headers, 'content-length': Buffer.byteLength(data) },
+      timeout: 120000
+    }, (res) => {
+      if (res.statusCode >= 400) {
+        let errData = '';
+        res.on('data', c => errData += c);
+        res.on('end', () => reject(new Error(`API ${res.statusCode}: ${errData.slice(0, 200)}`)));
+        return;
+      }
+
+      let buffer = '';
+      res.on('data', (chunk) => {
+        buffer += chunk.toString();
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || ''; // 保留未完成的行
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ') || line === 'data: [DONE]') continue;
+          let event;
+          try { event = JSON.parse(line.slice(6)); } catch { continue; }
+
+          if (providerId === 'anthropic') {
+            // Anthropic SSE 格式
+            if (event.type === 'content_block_delta') {
+              if (event.delta?.type === 'text_delta' && event.delta.text) {
+                fullContent += event.delta.text;
+                if (onText) onText(event.delta.text);
+              } else if (event.delta?.type === 'input_json_delta' && currentToolCall) {
+                currentToolCall._jsonBuf = (currentToolCall._jsonBuf || '') + (event.delta.partial_json || '');
+              }
+            } else if (event.type === 'content_block_start' && event.content_block?.type === 'tool_use') {
+              currentToolCall = { id: event.content_block.id, name: event.content_block.name, _jsonBuf: '' };
+            } else if (event.type === 'content_block_stop' && currentToolCall) {
+              currentToolCall.input = safeJsonParse(currentToolCall._jsonBuf);
+              delete currentToolCall._jsonBuf;
+              toolCalls.push(currentToolCall);
+              if (onToolUse) onToolUse(currentToolCall);
+              currentToolCall = null;
+            } else if (event.type === 'message_delta' && event.usage) {
+              usage = { ...usage, ...event.usage };
+            } else if (event.usage) {
+              usage = { ...usage, ...event.usage };
+            }
+          } else {
+            // OpenAI SSE 格式
+            const delta = event.choices?.[0]?.delta;
+            if (delta?.content) {
+              fullContent += delta.content;
+              if (onText) onText(delta.content);
+            }
+            if (delta?.tool_calls) {
+              for (const tc of delta.tool_calls) {
+                if (tc.index !== undefined) {
+                  if (!toolCalls[tc.index]) {
+                    toolCalls[tc.index] = { id: tc.id || '', name: tc.function?.name || '', _argBuf: '' };
+                  }
+                  if (tc.function?.arguments) {
+                    toolCalls[tc.index]._argBuf += tc.function.arguments;
+                  }
+                }
+              }
+            }
+            if (event.usage) usage = event.usage;
+          }
+        }
+      });
+
+      res.on('end', () => {
+        // 解析 OpenAI 格式的工具调用参数
+        const finalToolCalls = toolCalls.map(tc => {
+          if (tc._argBuf !== undefined) {
+            tc.input = safeJsonParse(tc._argBuf);
+            delete tc._argBuf;
+          }
+          return tc;
+        }).filter(tc => tc.name);
+
+        if (finalToolCalls.length > 0 && onToolUse) {
+          // OpenAI 格式的 tool calls 在流结束时一次性通知
+          for (const tc of finalToolCalls) {
+            if (!tc._notified) onToolUse(tc);
+          }
+        }
+
+        resolve({ content: fullContent, toolCalls: finalToolCalls, usage });
+      });
+    });
+
+    req.on('error', reject);
+    req.on('timeout', () => { req.destroy(); reject(new Error('API 流式请求超时')); });
+    req.write(data);
+    req.end();
+  });
+}
+
+module.exports = { callLLM, callLLMStreaming, probeUncommonRoute, resetUncommonRouteProbe, isUncommonRouteActive };

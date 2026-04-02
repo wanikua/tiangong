@@ -1,6 +1,7 @@
 {
   "name": "tiangong",
   "version": "0.1.0",
+  "author": "菠萝菠菠",
   "description": "TianGong — Self-evolving multi-agent AI framework inspired by ancient Chinese governance. 3 regime systems, OpenViking memory, auto prompt optimization, agent competition, 7 LLM providers including Ollama. 天工开物 — 自进化多Agent框架，三省六部制×AI。",
   "main": "src/engine/query-loop.js",
   "bin": {

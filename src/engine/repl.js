@@ -38,7 +38,7 @@ function makeBanner(regimeId) {
   return `
 ${chalk.yellow('  ╔══════════════════════════════════════════════════════╗')}
 ${chalk.yellow('  ║')}                                                      ${chalk.yellow('║')}
-${chalk.yellow('  ║')}   ${chalk.bold.yellow('天 工 开 物')} ${chalk.gray('v' + version)}                                ${chalk.yellow('║')}
+${chalk.yellow('  ║')}   ${chalk.bold.yellow('天 工 开 物')} ${chalk.gray('v' + version)}    ${chalk.gray('by 菠萝菠菠')}            ${chalk.yellow('║')}
 ${chalk.yellow('  ║')}   ${icon} ${chalk.white(label)}                                      ${chalk.yellow('║')}
 ${chalk.yellow('  ║')}                                                      ${chalk.yellow('║')}
 ${chalk.yellow('  ║')}   ${chalk.gray('/court  朝廷架构    /cost   户部账目')}           ${chalk.yellow('║')}
@@ -124,6 +124,23 @@ async function startRepl(options) {
     // 防止重复提交
     if (isProcessing) {
       console.log(chalk.gray('  （上一道旨意正在执行中，请稍候）'));
+      return;
+    }
+
+    // ── 隐藏彩蛋 🍍 ──
+    if (input === '菠萝菠菠' || input === 'boluo' || input === '🍍') {
+      console.log();
+      console.log(chalk.yellow('  🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍'));
+      console.log();
+      console.log(chalk.bold.yellow('     你找到了隐藏彩蛋！'));
+      console.log();
+      console.log(chalk.white('     天工开物 — by 菠萝菠菠'));
+      console.log(chalk.gray('     「代码如诗，架构如朝。」'));
+      console.log(chalk.gray('     「一个人也可以建一座朝廷。」'));
+      console.log();
+      console.log(chalk.yellow('  🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍'));
+      console.log();
+      rl.prompt();
       return;
     }
 

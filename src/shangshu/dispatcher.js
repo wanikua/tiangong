@@ -12,7 +12,7 @@ const chalk = require('chalk');
 const { PermissionGate } = require('../menxia/permission-gate');
 const { checkCommandSafety } = require('../menxia/security-check');
 const { callLLM } = require('./li/api-client');
-const { getToolSchemas, executeTool } = require('./bing/tools');
+const { getToolSchemas, executeTool, executeToolsBatched } = require('./bing/tools');
 const { CostTracker } = require('./hu/cost-tracker');
 const { buildSystemPrompt } = require('../zhongshu/prompt-builder');
 const { memoryStore } = require('../memory/store');
@@ -172,52 +172,37 @@ class Dispatcher {
         messages.push(assistantMsg);
       }
 
-      // 执行每个工具调用
+      // 执行工具调用（read-only 并发，write 串行）
+      // 先做安全检查
       for (const tc of response.toolCalls) {
-        this.onProgress({
-          type: 'tool_call',
-          step: step.id,
-          agent: agentId,
-          tool: tc.name,
-          input: tc.input
-        });
-
-        let toolResult;
-        try {
-          // 门下省安全检查（Bash 命令）
-          if (tc.name === 'bash' && tc.input.command) {
-            const safety = checkCommandSafety(tc.input.command);
-            if (safety.blocked) {
-              toolResult = `[刑部拦截] 危险命令被阻止: ${safety.risks.map(r => r.desc).join(', ')}`;
-            } else if (safety.requiresConfirmation) {
-              // 记录警告但允许执行
-              this.onProgress({
-                type: 'tool_call',
-                step: step.id,
-                agent: agentId,
-                tool: '⚠️ 刑部警告',
-                input: { risks: safety.risks.map(r => r.desc) }
-              });
-            }
+        if (tc.name === 'bash' && tc.input.command) {
+          const safety = checkCommandSafety(tc.input.command);
+          if (safety.blocked) {
+            tc._blocked = `[刑部拦截] 危险命令被阻止: ${safety.risks.map(r => r.desc).join(', ')}`;
+          } else if (safety.requiresConfirmation) {
+            this.onProgress({ type: 'tool_call', step: step.id, agent: agentId, tool: '⚠️ 刑部警告', input: { risks: safety.risks.map(r => r.desc) } });
           }
-
-          if (!toolResult) {
-            toolResult = await executeTool(tc.name, tc.input, { cwd: this.cwd, agentId });
-          }
-        } catch (err) {
-          toolResult = `工具执行失败: ${err.message}`;
         }
+        this.onProgress({ type: 'tool_call', step: step.id, agent: agentId, tool: tc.name, input: tc.input });
+      }
 
-        // 截断过长的工具结果
-        if (typeof toolResult !== 'string') {
-          toolResult = toolResult ? String(toolResult) : '(无结果)';
-        }
+      // 批量执行（被拦截的跳过）
+      const toolResults = await executeToolsBatched(
+        response.toolCalls.map(tc => tc._blocked
+          ? { ...tc, _preResult: tc._blocked }
+          : tc
+        ),
+        { cwd: this.cwd, agentId }
+      );
+
+      // 喂回结果
+      for (const tr of toolResults) {
+        let toolResult = tr.result;
         if (toolResult.length > 50000) {
           toolResult = toolResult.slice(0, 50000) + '\n... (截断，结果过长)';
         }
 
-        // 把工具结果加入历史
-        const toolResultMsg = this._buildToolResult(tc.id, tc.name, toolResult);
+        const toolResultMsg = this._buildToolResult(tr.id, tr.name, toolResult);
         if (this.isAnthropic) {
           messages.push({ role: 'user', content: toolResultMsg });
         } else {
