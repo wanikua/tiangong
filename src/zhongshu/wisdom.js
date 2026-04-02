@@ -122,6 +122,12 @@ const ANCIENT_WISDOM = {
     { text: '知彼知己，百战不殆。', source: '《孙子兵法》', meaning: '充分调研' },
     { text: '善战者，求之于势，不责于人。', source: '《孙子兵法》', meaning: '借势而为' },
     { text: '工欲善其事，必先利其器。', source: '《论语》', meaning: '准备充分' },
+    { text: '治大国若烹小鲜。', source: '《道德经》', meaning: '治理要轻柔精准' },
+    { text: '将在外，君命有所不受。', source: '《孙子兵法》', meaning: '灵活授权' },
+    { text: '先天下之忧而忧，后天下之乐而乐。', source: '范仲淹', meaning: '前瞻担当' },
+    { text: '天时不如地利，地利不如人和。', source: '《孟子》', meaning: '团队为重' },
+    { text: '夫未战而庙算胜者，得算多也。', source: '《孙子兵法》', meaning: '充分规划' },
+    { text: '上兵伐谋，其次伐交，其次伐兵。', source: '《孙子兵法》', meaning: '用策略而非蛮力' },
   ],
 
   // ── 审核层慧根 ──
@@ -131,6 +137,11 @@ const ANCIENT_WISDOM = {
     { text: '流水不腐，户枢不蠹。', source: '《吕氏春秋》', meaning: '保持审视' },
     { text: '防民之口，甚于防川。', source: '《国语》', meaning: '堵不如疏' },
     { text: '兼听则明，偏信则暗。', source: '《资治通鉴》', meaning: '多方验证' },
+    { text: '以铜为镜，可以正衣冠；以史为镜，可以知兴替。', source: '《贞观政要》', meaning: '以史为鉴' },
+    { text: '靡不有初，鲜克有终。', source: '《诗经》', meaning: '善始善终' },
+    { text: '生于忧患，死于安乐。', source: '《孟子》', meaning: '居安思危' },
+    { text: '见微知著，睹始知终。', source: '袁康', meaning: '从小处看大局' },
+    { text: '过而不改，是谓过矣。', source: '《论语》', meaning: '知错必改' },
   ],
 
   // ── 执行层慧根 ──
@@ -141,6 +152,12 @@ const ANCIENT_WISDOM = {
     { text: '锲而不舍，金石可镂。', source: '《荀子》', meaning: '坚持不懈' },
     { text: '纸上得来终觉浅，绝知此事要躬行。', source: '陆游', meaning: '实践为先' },
     { text: '删繁就简三秋树，领异标新二月花。', source: '郑板桥', meaning: '简洁创新' },
+    { text: '路漫漫其修远兮，吾将上下而求索。', source: '屈原', meaning: '探索不止' },
+    { text: '天行健，君子以自强不息。', source: '《易经》', meaning: '持续精进' },
+    { text: '业精于勤，荒于嬉。', source: '韩愈', meaning: '勤能补拙' },
+    { text: '世上无难事，只要肯登攀。', source: '毛泽东', meaning: '迎难而上' },
+    { text: '千淘万漉虽辛苦，吹尽狂沙始到金。', source: '刘禹锡', meaning: '坚持出真知' },
+    { text: '宝剑锋从磨砺出，梅花香自苦寒来。', source: '古训', meaning: '苦尽甘来' },
   ],
 
   // ── 通用慧根 ──
@@ -150,6 +167,23 @@ const ANCIENT_WISDOM = {
     { text: '穷则变，变则通，通则久。', source: '《易经》', meaning: '灵活应变' },
     { text: '知其然，知其所以然。', source: '朱熹', meaning: '深入理解' },
     { text: '博观而约取，厚积而薄发。', source: '苏轼', meaning: '深厚积累' },
+    { text: '三人行，必有我师焉。', source: '《论语》', meaning: '虚心学习' },
+    { text: '知之为知之，不知为不知，是知也。', source: '《论语》', meaning: '诚实面对' },
+    { text: '吾日三省吾身。', source: '《论语》', meaning: '反思精进' },
+    { text: '己所不欲，勿施于人。', source: '《论语》', meaning: '换位思考' },
+    { text: '水能载舟，亦能覆舟。', source: '《荀子》', meaning: '双刃剑思维' },
+    { text: '他山之石，可以攻玉。', source: '《诗经》', meaning: '借鉴外部' },
+    { text: '有志者事竟成。', source: '《后汉书》', meaning: '志向决定成就' },
+    { text: '君子坦荡荡，小人长戚戚。', source: '《论语》', meaning: '光明磊落' },
+    { text: '满招损，谦受益。', source: '《尚书》', meaning: '谦虚谨慎' },
+    { text: '温故而知新，可以为师矣。', source: '《论语》', meaning: '温故知新' },
+    { text: '道生一，一生二，二生三，三生万物。', source: '《道德经》', meaning: '从简到繁' },
+    { text: '上善若水，水善利万物而不争。', source: '《道德经》', meaning: '柔韧处世' },
+    { text: '千里之行，始于足下。', source: '《道德经》', meaning: '从第一步开始' },
+    { text: '祸兮福之所倚，福兮祸之所伏。', source: '《道德经》', meaning: '祸福相依' },
+    { text: '天下兴亡，匹夫有责。', source: '顾炎武', meaning: '担当责任' },
+    { text: '苟日新，日日新，又日新。', source: '《大学》', meaning: '持续迭代' },
+    { text: '虽千万人，吾往矣。', source: '《孟子》', meaning: '勇往直前' },
   ]
 };
 
