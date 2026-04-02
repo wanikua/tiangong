@@ -27,6 +27,14 @@ function makeBanner(regimeId) {
   };
   const [icon, label] = regimeLabels[regimeId] || regimeLabels.ming;
 
+  // 随机古文慧根
+  let wisdomLine = '';
+  try {
+    const { getRandomWisdom } = require('../zhongshu/wisdom');
+    const w = getRandomWisdom();
+    wisdomLine = chalk.italic.gray(`  「${w.text}」—— ${w.source}`);
+  } catch { /* ignore */ }
+
   return `
 ${chalk.yellow('  ╔══════════════════════════════════════════════════════╗')}
 ${chalk.yellow('  ║')}                                                      ${chalk.yellow('║')}
@@ -34,12 +42,12 @@ ${chalk.yellow('  ║')}   ${chalk.bold.yellow('天 工 开 物')} ${chalk.gray(
 ${chalk.yellow('  ║')}   ${icon} ${chalk.white(label)}                                      ${chalk.yellow('║')}
 ${chalk.yellow('  ║')}                                                      ${chalk.yellow('║')}
 ${chalk.yellow('  ║')}   ${chalk.gray('/court  朝廷架构    /cost   户部账目')}           ${chalk.yellow('║')}
-${chalk.yellow('  ║')}   ${chalk.gray('/regime 制度切换    /memory 太史局')}             ${chalk.yellow('║')}
+${chalk.yellow('  ║')}   ${chalk.gray('/regime 制度切换    /viking 记忆文件系统')}       ${chalk.yellow('║')}
 ${chalk.yellow('  ║')}   ${chalk.gray('/clear  清屏        /help   帮助')}               ${chalk.yellow('║')}
 ${chalk.yellow('  ║')}   ${chalk.gray('/history 历史旨意   /exit   退朝')}               ${chalk.yellow('║')}
 ${chalk.yellow('  ║')}                                                      ${chalk.yellow('║')}
 ${chalk.yellow('  ╚══════════════════════════════════════════════════════╝')}
-`;
+${wisdomLine ? '\n' + wisdomLine + '\n' : ''}`;
 }
 
 /**
@@ -152,6 +160,77 @@ async function startRepl(options) {
           console.log(`    ${chalk.cyan(r.id.padEnd(10))} ${r.name} — ${r.description}${active}`);
         }
         console.log(chalk.gray('\n  切换示例: /regime tang\n'));
+      }
+      rl.prompt();
+      return;
+    }
+
+    if (input.startsWith('/viking') || input.startsWith('/记忆文件')) {
+      const { vikingStore } = require('../memory/viking-store');
+      const args = input.replace(/^\/(viking|记忆文件)\s*/, '').trim();
+
+      if (args.startsWith('ls')) {
+        const uri = args.replace('ls', '').trim() || 'viking://';
+        const items = vikingStore.ls(uri);
+        console.log(chalk.bold(`\n  📂 ${uri}\n`));
+        if (items.length === 0) {
+          console.log(chalk.gray('  (空)'));
+        } else {
+          for (const item of items) {
+            const icon = item.type === 'directory' ? '📁' : '📄';
+            console.log(`    ${icon} ${chalk.cyan(item.name || item.uri)} — ${chalk.gray(item.l0 || '')}`);
+          }
+        }
+        console.log();
+      } else if (args.startsWith('find ')) {
+        const query = args.replace('find ', '').trim();
+        const results = vikingStore.find(query);
+        console.log(chalk.bold(`\n  🔍 搜索: "${query}"\n`));
+        if (results.length === 0) {
+          console.log(chalk.gray('  (无匹配)'));
+        } else {
+          for (const r of results) {
+            console.log(`    ${chalk.cyan(r.uri)} ${chalk.gray(`(${r.relevanceScore}分)`)}`);
+            console.log(`      ${chalk.white(r.l0)}`);
+          }
+        }
+        console.log();
+      } else if (args.startsWith('read ')) {
+        const uri = args.replace('read ', '').trim();
+        const entry = vikingStore.read(uri);
+        if (entry) {
+          console.log(chalk.bold(`\n  📄 ${uri}\n`));
+          console.log(chalk.gray(`  L0: ${entry.l0}`));
+          console.log(chalk.gray(`  L1: ${(entry.l1 || '').slice(0, 200)}`));
+          console.log(chalk.white(`  L2: ${(entry.l2 || '').slice(0, 500)}`));
+        } else {
+          console.log(chalk.red(`\n  找不到: ${uri}\n`));
+        }
+      } else if (args === 'stats') {
+        const stats = vikingStore.getStats();
+        console.log(chalk.bold('\n  📊 Viking 存储统计\n'));
+        console.log(`  总条目: ${chalk.cyan(stats.total)}`);
+        console.log(`  资源: ${stats.byRoot.resources}  用户: ${stats.byRoot.user}  Agent: ${stats.byRoot.agent}`);
+        if (Object.keys(stats.byType).length > 0) {
+          console.log(`  类型: ${Object.entries(stats.byType).map(([k,v]) => `${k}(${v})`).join(' ')}`);
+        }
+        console.log();
+      } else if (args.startsWith('index')) {
+        console.log(chalk.yellow('\n  正在索引当前项目到 Viking 文件系统...\n'));
+        vikingStore.indexProject(process.cwd());
+        console.log(chalk.green('  ✓ 索引完成\n'));
+      } else {
+        console.log(chalk.bold('\n  📂 Viking 上下文文件系统（OpenViking 架构）\n'));
+        console.log(chalk.gray('  viking://resources/  项目资源'));
+        console.log(chalk.gray('  viking://user/       用户偏好'));
+        console.log(chalk.gray('  viking://agent/      Agent 经验\n'));
+        console.log(chalk.gray('  命令:'));
+        console.log(chalk.gray('    /viking ls [uri]       列出目录'));
+        console.log(chalk.gray('    /viking find <关键词>  搜索'));
+        console.log(chalk.gray('    /viking read <uri>     读取条目'));
+        console.log(chalk.gray('    /viking stats          存储统计'));
+        console.log(chalk.gray('    /viking index          索引当前项目'));
+        console.log();
       }
       rl.prompt();
       return;
@@ -557,6 +636,7 @@ async function startRepl(options) {
     ${chalk.cyan('/court')}          显示朝廷架构 + 百官名册
     ${chalk.cyan('/regime [id]')}    查看/切换制度 (ming/tang/modern)
     ${chalk.cyan('/memory')}         太史局记忆概况
+    ${chalk.cyan('/viking')}         📂 Viking 上下文文件系统 (OpenViking)
     ${chalk.cyan('/cost')}           户部报账
     ${chalk.cyan('/history')}        旨意历史
 

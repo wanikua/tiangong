@@ -17,6 +17,7 @@ const { CostTracker } = require('./hu/cost-tracker');
 const { buildSystemPrompt } = require('../zhongshu/prompt-builder');
 const { memoryStore } = require('../memory/store');
 const { processConversation } = require('../memory/extractor');
+const { vikingStore } = require('../memory/viking-store');
 const { reputationManager } = require('../features/reputation');
 const { sessionRecorder } = require('../features/time-travel');
 
@@ -224,6 +225,14 @@ class Dispatcher {
     // 记忆提取：从最终输出中学习
     processConversation(originalPrompt, finalContent, agentId, { projectPath: this.cwd });
 
+    // OpenViking 自进化：将经验写入虚拟文件系统
+    try {
+      vikingStore.evolveFromSession(agentId, originalPrompt, finalContent, {
+        success: !!finalContent,
+        toolCalls: messages.filter(m => m.role === 'assistant').length
+      });
+    } catch { /* ignore viking errors */ }
+
     return {
       agent: agentId,
       content: finalContent,
@@ -241,7 +250,19 @@ class Dispatcher {
     // 角色 prompt
     parts.push(buildSystemPrompt(agentId, this.regimeId, { cwd: this.cwd }));
 
-    // 记忆注入
+    // OpenViking 上下文注入（L0/L1 按需加载）
+    try {
+      const vikingContext = vikingStore.buildContextPrompt(agentId, {
+        taskContext: originalPrompt,
+        projectPath: this.cwd,
+        maxTokens: 2000
+      });
+      if (vikingContext) {
+        parts.push('\n' + vikingContext);
+      }
+    } catch { /* viking store not available */ }
+
+    // 旧版记忆注入（兼容）
     const memoryPrompt = memoryStore.buildMemoryPrompt(agentId, {
       projectPath: this.cwd,
       taskContext: originalPrompt

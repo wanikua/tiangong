@@ -73,6 +73,13 @@ function buildSystemPrompt(agentId, regimeId = 'ming', context = {}) {
     parts.push('- 简洁直接，数据驱动');
   }
 
+  // 慧根 + 思维框架注入
+  try {
+    const { buildWisdomPrompt } = require('./wisdom');
+    const wisdomPrompt = buildWisdomPrompt(agentId, agent.layer);
+    if (wisdomPrompt) parts.push(wisdomPrompt);
+  } catch { /* wisdom module not loaded */ }
+
   // 性格特质注入
   try {
     const { personalityManager } = require('../features/agent-personality');
