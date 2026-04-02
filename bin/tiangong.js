@@ -100,6 +100,57 @@ program
     await importAgent(source, options);
   });
 
+// 子命令：模型管理
+program
+  .command('model [name]')
+  .description('查看/切换模型')
+  .option('--of <type>', '查看指定 provider 的模型列表')
+  .action((name, options) => {
+    const { PROVIDERS, getProvider } = require('../src/config/providers');
+    const config = loadConfig() || {};
+    const providerId = options.of || config.provider || 'anthropic';
+    const provider = getProvider(providerId);
+
+    if (!provider) {
+      console.log(chalk.red(`\n  未知 provider: ${providerId}\n`));
+      process.exit(1);
+    }
+
+    if (name) {
+      // 切换模型
+      config.model = name;
+      const fs = require('fs');
+      const path = require('path');
+      const configDir = path.join(process.env.HOME || '/tmp', '.tiangong');
+      const configPath = path.join(configDir, 'config.json');
+      if (!fs.existsSync(configDir)) fs.mkdirSync(configDir, { recursive: true });
+      fs.writeFileSync(configPath, JSON.stringify(config, null, 2), { mode: 0o600 });
+      console.log(chalk.green(`\n  模型已切换: ${chalk.bold(name)}`));
+      console.log(chalk.gray(`  Provider: ${provider.name}\n`));
+    } else {
+      // 列出可选模型
+      const currentModel = config.model || provider.defaultModel || '(未设置)';
+      console.log(chalk.bold(`\n  当前模型: ${chalk.cyan(currentModel)}`));
+      console.log(chalk.gray(`  Provider: ${provider.name}\n`));
+
+      if (provider.models.length > 0) {
+        console.log(chalk.bold('  可选模型：\n'));
+        provider.models.forEach((m, i) => {
+          const active = m === currentModel ? chalk.green(' <-- 当前') : '';
+          const isDefault = m === provider.defaultModel ? chalk.gray(' (推荐)') : '';
+          const num = chalk.cyan(String(i + 1).padStart(2));
+          console.log('    ' + num + ') ' + m + isDefault + active);
+        });
+        console.log(chalk.gray('\n  切换: tiangong model <模型名>'));
+        console.log(chalk.gray('  示例: tiangong model ' + (provider.models[0] || 'model-name')));
+      } else {
+        console.log(chalk.gray('  该 provider 未预设模型列表，直接指定模型名即可'));
+        console.log(chalk.gray('  示例: tiangong model my-model-name'));
+      }
+      console.log();
+    }
+  });
+
 // 子命令：重新配置
 program
   .command('setup')

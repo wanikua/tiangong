@@ -42,9 +42,9 @@ ${chalk.yellow('  ║')}   ${chalk.bold.yellow('天 工 开 物')} ${chalk.gray(
 ${chalk.yellow('  ║')}   ${icon} ${chalk.white(label)}                                      ${chalk.yellow('║')}
 ${chalk.yellow('  ║')}                                                      ${chalk.yellow('║')}
 ${chalk.yellow('  ║')}   ${chalk.gray('/court  朝廷架构    /cost   户部账目')}           ${chalk.yellow('║')}
-${chalk.yellow('  ║')}   ${chalk.gray('/regime 制度切换    /viking 记忆文件系统')}       ${chalk.yellow('║')}
-${chalk.yellow('  ║')}   ${chalk.gray('/clear  清屏        /help   帮助')}               ${chalk.yellow('║')}
-${chalk.yellow('  ║')}   ${chalk.gray('/history 历史旨意   /exit   退朝')}               ${chalk.yellow('║')}
+${chalk.yellow('  ║')}   ${chalk.gray('/regime 制度切换    /model  模型切换')}           ${chalk.yellow('║')}
+${chalk.yellow('  ║')}   ${chalk.gray('/viking 记忆文件    /clear  清屏')}               ${chalk.yellow('║')}
+${chalk.yellow('  ║')}   ${chalk.gray('/history 历史旨意   /help 帮助  /exit 退朝')}     ${chalk.yellow('║')}
 ${chalk.yellow('  ║')}                                                      ${chalk.yellow('║')}
 ${chalk.yellow('  ╚══════════════════════════════════════════════════════╝')}
 ${wisdomLine ? '\n' + wisdomLine + '\n' : ''}`;
@@ -233,24 +233,53 @@ async function startRepl(options) {
     if (input.startsWith('/model') || input.startsWith('/模型')) {
       const parts = input.split(/\s+/);
       if (parts.length >= 2) {
-        const newModel = parts.slice(1).join(' ');
+        const arg = parts[1];
+        const { getProvider } = require('../config/providers');
+        const config = require('../config/setup').loadConfig() || {};
+        const providerId = options.provider || config.provider || 'anthropic';
+        const provider = getProvider(providerId);
+        const models = provider?.models || [];
+
+        // 支持序号选择
+        let newModel;
+        const idx = parseInt(arg);
+        if (!isNaN(idx) && idx >= 1 && idx <= models.length) {
+          newModel = models[idx - 1];
+        } else {
+          newModel = parts.slice(1).join(' ');
+        }
+
         options.model = newModel;
-        // 也写入配置文件
+        // 写入配置文件
         try {
-          const { loadConfig, CONFIG_PATH } = require('../config/setup');
-          const config = loadConfig() || {};
-          config.model = newModel;
-          require('fs').writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2), { mode: 0o600 });
+          const { loadConfig: lc, CONFIG_PATH } = require('../config/setup');
+          const cfg = lc() || {};
+          cfg.model = newModel;
+          require('fs').writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2), { mode: 0o600 });
         } catch { /* ignore */ }
         console.log(chalk.green(`\n  模型已切换: ${chalk.bold(newModel)}\n`));
       } else {
-        const currentModel = options.model || '(默认)';
+        const { getProvider } = require('../config/providers');
+        const config = require('../config/setup').loadConfig() || {};
+        const providerId = options.provider || config.provider || 'anthropic';
+        const provider = getProvider(providerId);
+        const currentModel = options.model || config.model || provider?.defaultModel || '(未设置)';
+
         console.log(chalk.bold(`\n  当前模型: ${chalk.cyan(currentModel)}`));
-        console.log(chalk.gray('\n  切换示例:'));
-        console.log(chalk.gray('    /model qwen-max'));
-        console.log(chalk.gray('    /model anthropic/claude-sonnet-4.6'));
-        console.log(chalk.gray('    /model jaahas/qwen3.5-uncensored:9b'));
-        console.log(chalk.gray('    /model deepseek-chat'));
+        console.log(chalk.gray(`  Provider: ${provider?.name || providerId}\n`));
+
+        const models = provider?.models || [];
+        if (models.length > 0) {
+          console.log(chalk.bold('  可选模型：\n'));
+          models.forEach((m, i) => {
+            const active = m === currentModel ? chalk.green(' <-- 当前') : '';
+            const isDefault = m === provider.defaultModel ? chalk.gray(' (推荐)') : '';
+            console.log(`    ${chalk.cyan(String(i + 1).padStart(2)}) ${m}${isDefault}${active}`);
+          });
+          console.log(chalk.gray('\n  切换: /model <序号>  或  /model <模型名>'));
+        } else {
+          console.log(chalk.gray('  切换: /model <模型名>'));
+        }
         console.log();
       }
       rl.prompt();
