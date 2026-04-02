@@ -174,7 +174,7 @@ async function startSession(prompt, options = {}) {
 
         // 更新 spinner 显示工具调用
         const toolNames = response.toolCalls.map(tc => tc.name).join(', ');
-        chatSpinner.update(chalk.cyan(`[${chatAgent}]`) + chalk.gray(` 🔧 ${toolNames}...`));
+        chatSpinner.update(chalk.cyan(`[${chatAgent}]`) + chalk.gray(` ${toolNames}...`));
 
         // 构建 assistant 消息（含 tool_use blocks）
         const config = loadConfig() || {};
@@ -247,14 +247,14 @@ async function startSession(prompt, options = {}) {
       } catch { /* ignore */ }
 
       console.log();
-      console.log(chalk.green(`  🏛️  ${L.done}`));
+      console.log(chalk.green(`  ${L.done}`));
 
       // 惊喜掉落：任务完成后随机掉宝藏
       try {
         const { treasureManager } = require('../features/treasure-hunt');
         const surprise = treasureManager.checkSurpriseDrop();
         if (surprise) {
-          console.log(chalk.yellow('\n  💫 完成任务时，你意外发现了一个宝藏！'));
+          console.log(chalk.yellow('\n  完成任务时，你意外发现了一个宝藏！'));
           const { playDropAnimation } = require('../features/treasure-animation');
           await playDropAnimation(surprise.rarity, surprise);
         }
@@ -271,7 +271,7 @@ async function startSession(prompt, options = {}) {
       const elapsed = formatDuration(Date.now() - sessionStart);
       console.log();
       console.log(chalk.gray('  ─────────────────────────────────────────────'));
-      console.log(chalk.gray(`  💬 快速回答 | ⏱ ${elapsed}`));
+      console.log(chalk.gray(`  快速回答 | ${elapsed}`));
       console.log();
 
       // 自动保存会话
@@ -380,7 +380,7 @@ async function startSession(prompt, options = {}) {
         }
         case 'tool_call':
           if (verbose) {
-            console.log(chalk.gray(`    🔧 [${event.agent}] ${event.tool}(${JSON.stringify(event.input).slice(0, 80)})`));
+            console.log(chalk.gray(`    [${event.agent}] ${event.tool}(${JSON.stringify(event.input).slice(0, 80)})`));
           }
           break;
         case 'text_delta': {
@@ -414,7 +414,7 @@ async function startSession(prompt, options = {}) {
         console.log();
       }
     }
-    console.log(chalk.green(`  🏛️  ${L.done}`));
+    console.log(chalk.green(`  ${L.done}`));
   } else {
     for (const [stepId, stepResult] of Object.entries(result.results)) {
       if (stepResult.status === 'failed') {
@@ -423,7 +423,7 @@ async function startSession(prompt, options = {}) {
         console.log(chalk.white(stepResult.output.content));
       }
     }
-    console.log(chalk.yellow(`\n  ⚠️  ${L.partial}`));
+    console.log(chalk.yellow(`\n  ${L.partial}`));
   }
 
   // ── 户部报账 ──
@@ -432,7 +432,7 @@ async function startSession(prompt, options = {}) {
 
   console.log();
   console.log(chalk.gray('  ─────────────────────────────────────────────'));
-  console.log(chalk.gray(`  💰 户部: ${chalk.yellow('$' + cost.total.totalCostUsd.toFixed(4))} | ${cost.total.inputTokens.toLocaleString()} in / ${cost.total.outputTokens.toLocaleString()} out | ⏱ ${elapsed}`));
+  console.log(chalk.gray(`  户部: ${chalk.yellow('$' + cost.total.totalCostUsd.toFixed(4))} | ${cost.total.inputTokens.toLocaleString()} in / ${cost.total.outputTokens.toLocaleString()} out | ${elapsed}`));
 
   if (verbose) {
     for (const [agentId, agentCost] of Object.entries(cost.perAgent)) {

@@ -238,7 +238,7 @@ ${zodiac.modifier}
 
     console.log();
     console.log(chalk.yellow('  ╔══════════════════════════════════════════════════════╗'));
-    console.log(chalk.yellow('  ║') + chalk.bold.yellow('    🧬  百 官 性 格 档 案  🧬') + '                          ' + chalk.yellow('║'));
+    console.log(chalk.yellow('  ║') + chalk.bold.yellow('       百 官 性 格 档 案') + '                             ' + chalk.yellow('║'));
     console.log(chalk.yellow('  ╚══════════════════════════════════════════════════════╝'));
     console.log();
 
@@ -297,8 +297,8 @@ ${zodiac.modifier}
       console.log(chalk.red.bold(`  总合拍度: ${'🔥'.repeat(10)} ${chem.totalScore}%`));
       console.log(chalk.red.bold(`  评语: ${chem.recommendation}`));
       console.log();
-      console.log(chalk.yellow('  💫 绝配中的绝配！宇宙级灵魂共鸣！'));
-      console.log(chalk.yellow('  💫 这个组合已经超越了合拍度量表的极限'));
+      console.log(chalk.yellow('  绝配中的绝配！宇宙级灵魂共鸣！'));
+      console.log(chalk.yellow('  这个组合已经超越了合拍度量表的极限'));
     } else {
       const barLen = 20;
       const filled = Math.round(barLen * chem.totalScore / 100);

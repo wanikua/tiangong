@@ -26,7 +26,7 @@ function bell() {
 async function playDropAnimation(rarity, treasure) {
   if (!process.stdout.isTTY) {
     // 非交互环境，简单输出
-    console.log(chalk.yellow(`\n  🎁 发现宝藏: ${treasure.name}\n`));
+    console.log(chalk.yellow(`\n  发现宝藏: ${treasure.name}\n`));
     return;
   }
 
@@ -53,14 +53,14 @@ async function playDropAnimation(rarity, treasure) {
 
 async function animateCommon(treasure) {
   console.log();
-  console.log(chalk.gray('  ✨ ') + chalk.white(treasure.name));
+  console.log(chalk.gray('  ') + chalk.white(treasure.name));
   await sleep(300);
 }
 
 async function animateUncommon(treasure) {
   console.log();
   console.log(chalk.yellow('  ┌────────────────────────────────┐'));
-  console.log(chalk.yellow('  │') + chalk.bold(` ✨ ${treasure.name}`.padEnd(32)) + chalk.yellow('│'));
+  console.log(chalk.yellow('  │') + chalk.bold(` ${treasure.name}`.padEnd(32)) + chalk.yellow('│'));
   console.log(chalk.yellow('  └────────────────────────────────┘'));
   await sleep(500);
 }
@@ -111,7 +111,7 @@ async function animateLegendary(treasure) {
   console.log();
 
   // 金色雨
-  const rainChars = '✦✧★☆⚡✨💫';
+  const rainChars = '✦✧★☆·';
   for (let row = 0; row < 3; row++) {
     let line = '  ';
     for (let col = 0; col < 40; col++) {
@@ -145,9 +145,9 @@ async function animateLegendary(treasure) {
  * 成功庆祝动画（金榜题名效果）
  */
 async function playCelebration() {
-  console.log(chalk.yellow('  🎊 ═══════════════════════════════ 🎊'));
-  console.log(chalk.yellow.bold('  ║    金 榜 题 名 · 任 务 大 成    ║'));
-  console.log(chalk.yellow('  🎊 ═══════════════════════════════ 🎊'));
+  console.log(chalk.yellow('  ═══════════════════════════════════'));
+  console.log(chalk.yellow.bold('  ║  金 榜 题 名 · 任 务 大 成  ║'));
+  console.log(chalk.yellow('  ═══════════════════════════════════'));
 }
 
 module.exports = { playDropAnimation, playCelebration };

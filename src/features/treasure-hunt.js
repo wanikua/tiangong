@@ -244,7 +244,7 @@ class TreasureManager {
   printCollection() {
     console.log();
     console.log(chalk.yellow('  ╔══════════════════════════════════════════════════════╗'));
-    console.log(chalk.yellow('  ║') + chalk.bold.yellow('    🗺️  宝 藏 图 鉴  🗺️') + chalk.gray('    Treasure Collection') + '    ' + chalk.yellow('║'));
+    console.log(chalk.yellow('  ║') + chalk.bold.yellow('    宝 藏 图 鉴') + chalk.gray('          Treasure Collection') + '    ' + chalk.yellow('║'));
     console.log(chalk.yellow('  ╚══════════════════════════════════════════════════════╝'));
     console.log();
 
@@ -263,8 +263,8 @@ class TreasureManager {
     // 寻宝概率
     const bonusPct = this.data.bonusDropRate || 0;
     console.log(`  当前寻宝加成: ${chalk.yellow(`+${Math.round(bonusPct * 100)}%`)}`);
-    if (this.data.githubStarred) console.log(chalk.gray('    ⭐ GitHub Star 加成 +10%'));
-    if (this.data.shared) console.log(chalk.gray('    📢 分享加成 +5%'));
+    if (this.data.githubStarred) console.log(chalk.gray('    GitHub Star 加成 +10%'));
+    if (this.data.shared) console.log(chalk.gray('    分享加成 +5%'));
     console.log();
 
     // 图鉴
@@ -297,7 +297,7 @@ class TreasureManager {
     // 龙袍进度
     const robeCount = [1,2,3,4,5].filter(n => collected[`robe_${n}`]).length;
     if (robeCount > 0) {
-      console.log(chalk.yellow(`  👑 龙袍碎片: ${robeCount}/5 ${robeCount >= 5 ? '— 🎉 龙袍已合成！' : ''}`));
+      console.log(chalk.yellow(`  龙袍碎片: ${robeCount}/5 ${robeCount >= 5 ? '— 龙袍已合成！' : ''}`));
     }
 
     console.log();
@@ -308,7 +308,7 @@ class TreasureManager {
    */
   hunt() {
     console.log();
-    console.log(chalk.yellow('  ⚔️  寻宝挑战开始！\n'));
+    console.log(chalk.yellow('  寻宝挑战开始！\n'));
 
     const bonus = this.data.bonusDropRate || 0;
 
@@ -316,7 +316,7 @@ class TreasureManager {
     const uncollected = Object.values(TREASURES).filter(t => !this.data.collected[t.id]);
 
     if (uncollected.length === 0) {
-      console.log(chalk.green('  🎉 恭喜！你已经收集了所有宝藏！'));
+      console.log(chalk.green('  恭喜！你已经收集了所有宝藏！'));
       console.log();
       return;
     }
@@ -352,7 +352,7 @@ class TreasureManager {
           playDropAnimation(treasure.rarity, treasure).catch(() => {});
         } catch {
           // fallback 静态输出
-          console.log(chalk.yellow(`  🎁 发现宝藏: ${treasure.name}`));
+          console.log(chalk.yellow(`  发现宝藏: ${treasure.name}`));
           console.log(chalk.gray(`     ${treasure.description}`));
           console.log(chalk.green(`     效果: ${treasure.effect}`));
         }
@@ -384,7 +384,7 @@ class TreasureManager {
     const riddle = RIDDLES[Math.floor(Math.random() * RIDDLES.length)];
 
     console.log();
-    console.log(chalk.yellow('  🧩 谜语:'));
+    console.log(chalk.yellow('  谜语:'));
     console.log(chalk.bold(`\n    「${riddle.riddle}」\n`));
     console.log(chalk.gray(`  提示: ${riddle.hint}`));
     console.log(chalk.gray(`  答对获得额外寻宝机会！输入 /treasure answer <答案>`));
@@ -420,7 +420,7 @@ class TreasureManager {
    */
   share() {
     console.log();
-    console.log(chalk.yellow('  📢 传播天下！分享天工开物获取奖励\n'));
+    console.log(chalk.yellow('  传播天下！分享天工开物获取奖励\n'));
 
     console.log(chalk.white('  分享以下内容到社交媒体，截图后获得奖励：'));
     console.log();
@@ -435,12 +435,12 @@ class TreasureManager {
     const text = shareTexts[Math.floor(Math.random() * shareTexts.length)];
     console.log(chalk.cyan(`    "${text}"`));
     console.log();
-    console.log(chalk.white(`    🔗 https://github.com/wanikua/tiangong`));
+    console.log(chalk.white(`    https://github.com/wanikua/tiangong`));
     console.log();
 
     // 生成一次性兑换码
     const code = generateRedeemCode();
-    console.log(chalk.green(`  📮 你的专属邀请码: ${chalk.bold(code)}`));
+    console.log(chalk.green(`  你的专属邀请码: ${chalk.bold(code)}`));
     console.log(chalk.gray('  好友安装后输入此码，你们都会获得随机宝藏！'));
     console.log();
 
@@ -454,7 +454,7 @@ class TreasureManager {
 
     // Star 提示
     if (!this.data.githubStarred) {
-      console.log(chalk.yellow('  💡 Star GitHub 项目还可以额外获得 +10% 寻宝概率'));
+      console.log(chalk.yellow('  Star GitHub 项目还可以额外获得 +10% 寻宝概率'));
       console.log(chalk.gray('     完成后输入 /treasure star'));
     }
     console.log();
@@ -473,7 +473,7 @@ class TreasureManager {
     this.data.bonusDropRate = (this.data.bonusDropRate || 0) + 0.10;
     this._save();
 
-    console.log(chalk.green('\n  ⭐ Star 奖励已激活: 寻宝概率 +10%'));
+    console.log(chalk.green('\n  Star 奖励已激活: 寻宝概率 +10%'));
     console.log(chalk.yellow('  赠送一次免费寻宝：'));
     this.hunt();
   }
@@ -505,7 +505,7 @@ class TreasureManager {
     this.data.bonusDropRate = (this.data.bonusDropRate || 0) + 0.03;
     this._save();
 
-    console.log(chalk.green('\n  🎁 兑换成功！获得 +3% 寻宝概率加成'));
+    console.log(chalk.green('\n  兑换成功！获得 +3% 寻宝概率加成'));
     console.log(chalk.yellow('  赠送一次免费寻宝：'));
     this.hunt();
   }
@@ -603,7 +603,7 @@ class TreasureManager {
     // 龙袍合成检查
     this._checkRobeComplete();
 
-    return injections.length > 0 ? '\n## 🎁 宝藏效果\n' + injections.join('\n') : null;
+    return injections.length > 0 ? '\n## 宝藏效果\n' + injections.join('\n') : null;
   }
 
   /**
@@ -689,7 +689,7 @@ class TreasureManager {
 
     const chalk = require('chalk');
     console.log();
-    console.log(chalk.yellow('  🏆 宝藏排行榜\n'));
+    console.log(chalk.yellow('  宝藏排行榜\n'));
     console.log(`  收集: ${chalk.bold(count)}/${total}  |  总分: ${chalk.yellow.bold(score)} 分`);
     console.log();
     console.log(`  ${chalk.red('传说')} ${rarities.legendary} | ${chalk.magenta('史诗')} ${rarities.epic} | ${chalk.blue('稀有')} ${rarities.rare} | ${chalk.green('优秀')} ${rarities.uncommon} | ${chalk.gray('普通')} ${rarities.common}`);

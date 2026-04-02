@@ -73,9 +73,9 @@ async function startRepl(options) {
       const isRouted = baseUrl.includes('localhost:8403') || baseUrl.includes('127.0.0.1:8403');
 
       if (isRouted) {
-        console.log(chalk.green('  🧠 UncommonRoute 已启用 — 按 prompt 难度自动选模型'));
+        console.log(chalk.green('  UncommonRoute 已启用 — 按 prompt 难度自动选模型'));
       } else {
-        console.log(chalk.gray('  🧠 检测到 UncommonRoute (localhost:8403)，但未启用'));
+        console.log(chalk.gray('  检测到 UncommonRoute (localhost:8403)，但未启用'));
         console.log(chalk.gray('     启用方式: tiangong setup 时 baseUrl 填 http://localhost:8403'));
         console.log(chalk.gray('     或设环境变量: ANTHROPIC_BASE_URL=http://localhost:8403'));
       }
@@ -86,12 +86,12 @@ async function startRepl(options) {
   // ── 新手引导（符合制度人设） ──
   if (isFirstSession) {
     if (currentRegime === 'modern') {
-      console.log(chalk.gray('  💡 Welcome! Try these:'));
+      console.log(chalk.gray('  Welcome! Try these:'));
       console.log(chalk.white('     Just type naturally: ') + chalk.cyan('"Build a login page"'));
       console.log(chalk.white('     Ask questions:       ') + chalk.cyan('"What is REST API?"'));
       console.log(chalk.white('     Type /help for all commands'));
     } else {
-      console.log(chalk.gray('  💡 司礼监提示陛下：'));
+      console.log(chalk.gray('  司礼监提示陛下：'));
       console.log(chalk.white('     直接说话即可：') + chalk.cyan('"帮朕写一个登录页面"'));
       console.log(chalk.white('     问问题也行：  ') + chalk.cyan('"什么是 REST API？"'));
       console.log(chalk.white('     输入 /help 查看朝堂指令'));
@@ -297,7 +297,7 @@ async function startRepl(options) {
       if (args.startsWith('ls')) {
         const uri = args.replace('ls', '').trim() || 'viking://';
         const items = vikingStore.ls(uri);
-        console.log(chalk.bold(`\n  📂 ${uri}\n`));
+        console.log(chalk.bold(`\n  ${uri}\n`));
         if (items.length === 0) {
           console.log(chalk.gray('  (空)'));
         } else {
@@ -310,7 +310,7 @@ async function startRepl(options) {
       } else if (args.startsWith('find ')) {
         const query = args.replace('find ', '').trim();
         const results = vikingStore.find(query);
-        console.log(chalk.bold(`\n  🔍 搜索: "${query}"\n`));
+        console.log(chalk.bold(`\n  搜索: "${query}"\n`));
         if (results.length === 0) {
           console.log(chalk.gray('  (无匹配)'));
         } else {
@@ -324,7 +324,7 @@ async function startRepl(options) {
         const uri = args.replace('read ', '').trim();
         const entry = vikingStore.read(uri);
         if (entry) {
-          console.log(chalk.bold(`\n  📄 ${uri}\n`));
+          console.log(chalk.bold(`\n  ${uri}\n`));
           console.log(chalk.gray(`  L0: ${entry.l0}`));
           console.log(chalk.gray(`  L1: ${(entry.l1 || '').slice(0, 200)}`));
           console.log(chalk.white(`  L2: ${(entry.l2 || '').slice(0, 500)}`));
@@ -333,7 +333,7 @@ async function startRepl(options) {
         }
       } else if (args === 'stats') {
         const stats = vikingStore.getStats();
-        console.log(chalk.bold('\n  📊 Viking 存储统计\n'));
+        console.log(chalk.bold('\n  Viking 存储统计\n'));
         console.log(`  总条目: ${chalk.cyan(stats.total)}`);
         console.log(`  资源: ${stats.byRoot.resources}  用户: ${stats.byRoot.user}  Agent: ${stats.byRoot.agent}`);
         if (Object.keys(stats.byType).length > 0) {
@@ -345,7 +345,7 @@ async function startRepl(options) {
         vikingStore.indexProject(process.cwd());
         console.log(chalk.green('  ✓ 索引完成\n'));
       } else {
-        console.log(chalk.bold('\n  📂 Viking 上下文文件系统（OpenViking 架构）\n'));
+        console.log(chalk.bold('\n  Viking 上下文文件系统（OpenViking 架构）\n'));
         console.log(chalk.gray('  viking://resources/  项目资源'));
         console.log(chalk.gray('  viking://user/       用户偏好'));
         console.log(chalk.gray('  viking://agent/      Agent 经验\n'));
@@ -367,7 +367,7 @@ async function startRepl(options) {
       const agentCount = Object.keys(data.agents).length;
       const totalMem = Object.values(data.agents).reduce((s, a) => s + a.length, 0) + data.court.length;
       console.log();
-      console.log(chalk.bold(`  📜 太史局 — 记忆总览`));
+      console.log(chalk.bold(`  太史局 — 记忆总览`));
       console.log(chalk.gray(`  ─────────────────────────────`));
       console.log(`  ${chalk.white('大臣数:')} ${chalk.cyan(agentCount)}   ${chalk.white('记忆总条数:')} ${chalk.cyan(totalMem)}`);
       console.log();
@@ -389,7 +389,7 @@ async function startRepl(options) {
       if (history.length === 0) {
         console.log(chalk.gray('\n  （本朝会暂无旨意记录）\n'));
       } else {
-        console.log(chalk.bold('\n  📋 旨意记录：\n'));
+        console.log(chalk.bold('\n  旨意记录：\n'));
         const recent = history.slice(-10);
         for (let i = 0; i < recent.length; i++) {
           const h = recent[i];
@@ -434,7 +434,7 @@ async function startRepl(options) {
       if (sessions.length === 0) {
         console.log(chalk.gray('\n  暂无保存的会话\n'));
       } else {
-        console.log(chalk.bold('\n  📂 最近会话：\n'));
+        console.log(chalk.bold('\n  最近会话：\n'));
         for (const s of sessions) {
           console.log(`    ${chalk.gray(s.savedAt?.slice(0, 16) || '?')} ${chalk.white(s.prompt || '(无)')} ${chalk.gray(`(${s.messageCount} 条)`)}`);
         }
@@ -838,28 +838,28 @@ async function startRepl(options) {
     ${chalk.cyan('/court')}          显示朝廷架构 + 百官名册
     ${chalk.cyan('/regime [id]')}    查看/切换制度 (ming/tang/modern)
     ${chalk.cyan('/memory')}         太史局记忆概况
-    ${chalk.cyan('/viking')}         📂 Viking 上下文文件系统 (OpenViking)
+    ${chalk.cyan('/viking')}         Viking 上下文文件系统 (OpenViking)
     ${chalk.cyan('/cost')}           户部报账
     ${chalk.cyan('/history')}        旨意历史
 
   ${chalk.gray('── 进阶功能 ──')}
-    ${chalk.cyan('/dream')}          🔮 朝堂梦境 — AI 预判你下一步需要什么
-    ${chalk.cyan('/collab')}         📋 六部联名 — 多 Agent 协同编码
-    ${chalk.cyan('/oracle')}         📜 天书降世 — 粘贴错误日志自动修复
-    ${chalk.cyan('/pk')}             ⚔️  武举殿试 — Agent 对决擂台
-    ${chalk.cyan('/debate')}         📣 廷议 — 多 Agent 朝堂辩论
-    ${chalk.cyan('/exam')}           📝 科举考试 — Agent 能力基准测试
-    ${chalk.cyan('/rank')}           🏆 功勋榜 — Agent 经验值 + 品阶
-    ${chalk.cyan('/auto-optimize')}   🧬 自动 Prompt 优化 — AGI 核心引擎
-    ${chalk.cyan('/evolve-self')}     🧬 自进化 — Agent 自我改进系统
-    ${chalk.cyan('/evolve')}         👑 朝代更迭 — 智能制度自适应推荐
-    ${chalk.cyan('/replay')}         📜 奏折回放 — 会话时间旅行
-    ${chalk.cyan('/autopsy')}        🔍 大理寺 — 故障验尸报告
-    ${chalk.cyan('/replay --weekly')} 📊 自动生成周报
+    ${chalk.cyan('/dream')}          朝堂梦境 — AI 预判你下一步需要什么
+    ${chalk.cyan('/collab')}         六部联名 — 多 Agent 协同编码
+    ${chalk.cyan('/oracle')}         天书降世 — 粘贴错误日志自动修复
+    ${chalk.cyan('/pk')}             武举殿试 — Agent 对决擂台
+    ${chalk.cyan('/debate')}         廷议 — 多 Agent 朝堂辩论
+    ${chalk.cyan('/exam')}           科举考试 — Agent 能力基准测试
+    ${chalk.cyan('/rank')}           功勋榜 — Agent 经验值 + 品阶
+    ${chalk.cyan('/auto-optimize')}   自动 Prompt 优化 — AGI 核心引擎
+    ${chalk.cyan('/evolve-self')}     自进化 — Agent 自我改进系统
+    ${chalk.cyan('/evolve')}         朝代更迭 — 智能制度自适应推荐
+    ${chalk.cyan('/replay')}         奏折回放 — 会话时间旅行
+    ${chalk.cyan('/autopsy')}        大理寺 — 故障验尸报告
+    ${chalk.cyan('/replay --weekly')} 自动生成周报
 
   ${chalk.gray('── 趣味 ──')}
-    ${chalk.cyan('/treasure')}       🗺️  寻宝奇缘 — 提示词寻宝游戏
-    ${chalk.cyan('/personality')}    🧬 性格档案 — MBTI × 星座 × 合拍度
+    ${chalk.cyan('/treasure')}       寻宝奇缘 — 提示词寻宝游戏
+    ${chalk.cyan('/personality')}    性格档案 — MBTI × 星座 × 合拍度
 
   ${chalk.gray('── 系统 ──')}
     ${chalk.cyan('/clear')}          清屏
@@ -1046,7 +1046,7 @@ function isVagueInput(input) {
  */
 function printCostReport(costs) {
   console.log();
-  console.log(chalk.bold('  💰 户部账目 — 本朝会花费汇总'));
+  console.log(chalk.bold('  户部账目 — 本朝会花费汇总'));
   console.log(chalk.gray('  ─────────────────────────────────'));
 
   if (costs.sessions === 0) {

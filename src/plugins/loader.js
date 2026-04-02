@@ -44,7 +44,7 @@ class PluginManager {
         const plugin = require(pluginPath);
 
         if (!plugin.name) {
-          console.log(chalk.yellow(`  ⚠ 插件 ${file} 缺少 name 字段，跳过`));
+          console.log(chalk.yellow(`  插件 ${file} 缺少 name 字段，跳过`));
           continue;
         }
 
@@ -74,7 +74,7 @@ class PluginManager {
           }
         }
       } catch (err) {
-        console.log(chalk.red(`  ✗ 插件 ${file} 加载失败: ${err.message}`));
+        console.log(chalk.red(`  插件 ${file} 加载失败: ${err.message}`));
       }
     }
   }
@@ -105,7 +105,7 @@ class PluginManager {
       console.log(chalk.gray(`  插件目录: ${PLUGIN_DIR}`));
       console.log(chalk.gray('  放一个 .js 文件到该目录即可'));
     } else {
-      console.log(chalk.bold('  🔌 已安装插件：\n'));
+      console.log(chalk.bold('  已安装插件：\n'));
       for (const p of this.plugins) {
         console.log(`  ${chalk.cyan(p.name)} ${chalk.gray('v' + p.version)} — ${p.description || p.file}`);
         const pTools = this.tools.filter(t => t._pluginName === p.name);

@@ -65,7 +65,7 @@ ${chalk.red.bold('                    天 工 开 物')}
 ${chalk.gray('                 TianGong · AI Agents')}
 ${chalk.gray('                    by 菠萝菠菠')}
 
-${chalk.yellow('                    ⚡ 登 基 大 典 ⚡')}
+${chalk.yellow('                    登 基 大 典')}
 
 ${chalk.yellow('    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')}
 `;
@@ -107,7 +107,7 @@ async function playCoronationComplete(config, providerName, model, regime) {
 
   console.log();
   console.log(chalk.yellow('    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'));
-  console.log(chalk.green.bold('              ⚡ 登 基 大 成 ！ 天 下 太 平 ！ ⚡'));
+  console.log(chalk.green.bold('              登 基 大 成 ！ 天 下 太 平 ！'));
   console.log(chalk.yellow('    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'));
   console.log();
   console.log(chalk.white('    年号:  ') + chalk.cyan.bold('天工'));
@@ -226,13 +226,13 @@ async function runSetup() {
             provider.defaultModel = provider.models[0];
           }
         } else {
-          console.log(chalk.yellow('    ⚠ Ollama 服务未运行或无模型。请先运行:'));
+          console.log(chalk.yellow('    Ollama 服务未运行或无模型。请先运行:'));
           console.log(chalk.gray('      ollama serve'));
           console.log(chalk.gray('      ollama pull qwen2.5-coder:7b'));
         }
         console.log();
       } catch {
-        console.log(chalk.yellow('    ⚠ 无法连接 Ollama 服务'));
+        console.log(chalk.yellow('    无法连接 Ollama 服务'));
       }
     }
 
