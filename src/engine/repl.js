@@ -478,6 +478,42 @@ async function startRepl(options) {
       return;
     }
 
+    if (input.startsWith('/auto-optimize') || input.startsWith('/自动优化')) {
+      const { optimizeAgentPrompt, optimizeAll, printOptimizationStatus, rollbackOverlay } = require('../features/auto-prompt-optimizer');
+      const args = input.replace(/^\/(auto-optimize|自动优化)\s*/, '').trim();
+
+      isProcessing = true;
+      try {
+        if (args === '--status' || args === '状态') {
+          printOptimizationStatus();
+        } else if (args.startsWith('--rollback')) {
+          const agentId = args.replace('--rollback', '').trim();
+          if (agentId) {
+            const ok = rollbackOverlay(agentId);
+            console.log(ok ? chalk.green(`\n  ✓ 已回滚 ${agentId} 的 Prompt 优化\n`) : chalk.yellow(`\n  无可回滚的备份\n`));
+          } else {
+            console.log(chalk.yellow('\n  用法: /auto-optimize --rollback <AgentId>\n'));
+          }
+        } else if (args) {
+          const result = await optimizeAgentPrompt(args);
+          if (result.skipped) {
+            console.log(chalk.gray(`\n  跳过: ${result.reason}\n`));
+          } else if (result.success) {
+            console.log(chalk.green(`\n  ✓ ${args} Prompt 已优化！`));
+            console.log(chalk.gray(`  之前成功率: ${result.perfData.successRate}`));
+            console.log(chalk.gray(`  优化内容: ${result.overlay.slice(0, 100)}...\n`));
+          }
+        } else {
+          await optimizeAll(currentRegime);
+        }
+      } catch (err) {
+        console.error(chalk.red(`\n  优化失败: ${err.message}\n`));
+      }
+      isProcessing = false;
+      rl.prompt();
+      return;
+    }
+
     if (input.startsWith('/evolve-self') || input.startsWith('/自进化')) {
       const { analyzeEvolutionOpportunities, evolvePrompt, evolveMemory, printEvolutionHistory } = require('../features/self-evolution');
       const args = input.replace(/^\/(evolve-self|自进化)\s*/, '').trim();
@@ -648,6 +684,7 @@ async function startRepl(options) {
     ${chalk.cyan('/debate')}         📣 廷议 — 多 Agent 朝堂辩论
     ${chalk.cyan('/exam')}           📝 科举考试 — Agent 能力基准测试
     ${chalk.cyan('/rank')}           🏆 功勋榜 — Agent 经验值 + 品阶
+    ${chalk.cyan('/auto-optimize')}   🧬 自动 Prompt 优化 — AGI 核心引擎
     ${chalk.cyan('/evolve-self')}     🧬 自进化 — Agent 自我改进系统
     ${chalk.cyan('/evolve')}         👑 朝代更迭 — 智能制度自适应推荐
     ${chalk.cyan('/replay')}         📜 奏折回放 — 会话时间旅行
