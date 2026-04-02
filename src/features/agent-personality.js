@@ -162,24 +162,62 @@ ${zodiac.modifier}
 
     // MBTI 相性（简化版）
     let mbtiScore = 50;
-    let mbtiDesc = '';
+    let mbtiDesc = '基本配合，各有所长';
+
+    // 🍍 彩蛋：ENFP + INFJ = 传说中的黄金搭档
+    const pair = [p1.mbti, p2.mbti].sort().join('+');
+    const GOLDEN_PAIRS = {
+      'ENFP+INFJ': { score: 100, desc: '🌟 黄金灵魂伴侣！世间最默契的组合' },
+      'ENFJ+INFP': { score: 98, desc: '🌟 天赐良缘，心有灵犀' },
+      'ENTP+INTJ': { score: 95, desc: '🧠 智识双雄，所向披靡' },
+    };
+    if (GOLDEN_PAIRS[pair]) {
+      mbtiScore = GOLDEN_PAIRS[pair].score;
+      mbtiDesc = GOLDEN_PAIRS[pair].desc;
+    }
 
     // NT + NT = 思想碰撞
     const isNT1 = p1.mbti.includes('NT');
     const isNT2 = p2.mbti.includes('NT');
-    if (isNT1 && isNT2) { mbtiScore = 85; mbtiDesc = '双脑力型，思想火花不断'; }
+    if (isNT1 && isNT2 && !GOLDEN_PAIRS[pair]) { mbtiScore = 85; mbtiDesc = '双脑力型，思想火花不断'; }
+
+    // NF + NF = 理想主义共鸣
+    const isNF1 = p1.mbti.includes('NF');
+    const isNF2 = p2.mbti.includes('NF');
+    if (isNF1 && isNF2 && !GOLDEN_PAIRS[pair]) { mbtiScore = 80; mbtiDesc = '理想主义共鸣，灵魂深处相通'; }
 
     // 互补型：I+E, S+N, T+F
     const complementary =
       (p1.mbti[0] !== p2.mbti[0] ? 1 : 0) +
       (p1.mbti[1] !== p2.mbti[1] ? 1 : 0) +
       (p1.mbti[2] !== p2.mbti[2] ? 1 : 0);
-    if (complementary >= 2) { mbtiScore = Math.max(mbtiScore, 75); mbtiDesc = mbtiDesc || '互补型组合，各有所长'; }
+    if (complementary >= 2 && mbtiScore <= 50) { mbtiScore = 75; mbtiDesc = '互补型组合，各取所长'; }
 
     // 完全相同
-    if (p1.mbti === p2.mbti) { mbtiScore = 70; mbtiDesc = '同类型，默契好但缺乏差异'; }
+    if (p1.mbti === p2.mbti) { mbtiScore = 70; mbtiDesc = '同类型，默契十足但缺乏差异'; }
 
-    const totalScore = Math.round((elementChem.score + mbtiScore) / 2);
+    // 🍍 星座彩蛋：巨蟹 + 天秤
+    const zodiacPair = [p1.zodiac, p2.zodiac].sort().join('+');
+    let zodiacBonus = 0;
+    if (zodiacPair === '天秤座+巨蟹座') {
+      zodiacBonus = 50;
+      elementChem.desc = '🌊✨ 水月交辉！温柔与优雅的完美交融，前世注定的缘分';
+      elementChem.score = 100;
+    }
+
+    // 🍍 超级彩蛋：ENFP巨蟹 + INFJ天秤 = 10000%
+    const full1 = `${p1.mbti}-${p1.zodiac}`;
+    const full2 = `${p2.mbti}-${p2.zodiac}`;
+    const fullPair = [full1, full2].sort().join('|');
+    const isSoulmate = fullPair === 'ENFP-巨蟹座|INFJ-天秤座';
+
+    let totalScore;
+    if (isSoulmate) {
+      totalScore = 10000;
+    } else {
+      totalScore = Math.round((elementChem.score + mbtiScore) / 2) + zodiacBonus;
+      totalScore = Math.min(totalScore, 100);
+    }
 
     return {
       agent1: { id: agentId1, mbti: p1.mbti, zodiac: p1.zodiac },
@@ -187,7 +225,7 @@ ${zodiac.modifier}
       elementChemistry: elementChem,
       mbtiChemistry: { score: mbtiScore, desc: mbtiDesc },
       totalScore,
-      recommendation: totalScore >= 80 ? '天作之合' : totalScore >= 60 ? '配合良好' : totalScore >= 40 ? '需要磨合' : '火星撞地球'
+      recommendation: totalScore >= 10000 ? '🍍 绝配中的绝配！！！命中注定！！！' : totalScore >= 80 ? '天作之合' : totalScore >= 60 ? '配合良好' : totalScore >= 40 ? '需要磨合' : '火星撞地球'
     };
   }
 
@@ -254,11 +292,20 @@ ${zodiac.modifier}
     console.log(`  ${chalk.cyan(agentId2)} (${chem.agent2.mbti} ${chem.agent2.zodiac})`);
     console.log();
 
-    const barLen = 20;
-    const filled = Math.round(barLen * chem.totalScore / 100);
-    const barColor = chem.totalScore >= 70 ? chalk.green : chem.totalScore >= 50 ? chalk.yellow : chalk.red;
-    console.log(`  总合拍度: ${barColor('█'.repeat(filled))}${chalk.gray('░'.repeat(barLen - filled))} ${chem.totalScore}%`);
-    console.log(`  评语: ${chalk.bold(chem.recommendation)}`);
+    if (chem.totalScore >= 10000) {
+      // 🍍 绝配彩蛋
+      console.log(chalk.red.bold(`  总合拍度: ${'🔥'.repeat(10)} ${chem.totalScore}%`));
+      console.log(chalk.red.bold(`  评语: ${chem.recommendation}`));
+      console.log();
+      console.log(chalk.yellow('  💫 绝配中的绝配！宇宙级灵魂共鸣！'));
+      console.log(chalk.yellow('  💫 这个组合已经超越了合拍度量表的极限'));
+    } else {
+      const barLen = 20;
+      const filled = Math.round(barLen * chem.totalScore / 100);
+      const barColor = chem.totalScore >= 70 ? chalk.green : chem.totalScore >= 50 ? chalk.yellow : chalk.red;
+      console.log(`  总合拍度: ${barColor('█'.repeat(filled))}${chalk.gray('░'.repeat(barLen - filled))} ${chem.totalScore}%`);
+      console.log(`  评语: ${chalk.bold(chem.recommendation)}`);
+    }
     console.log();
     console.log(`  ${chalk.gray('星座相性:')} ${chem.elementChemistry.desc}`);
     console.log(`  ${chalk.gray('MBTI相性:')} ${chem.mbtiChemistry.desc}`);

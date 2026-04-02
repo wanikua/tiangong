@@ -103,6 +103,16 @@ async function startRepl(options) {
   const promptNames = { ming: '天子', tang: '天子', modern: 'CEO' };
 
   function getPrompt() {
+    // 宝藏效果：龙袍合成后主题变化
+    try {
+      const { treasureManager } = require('../features/treasure-hunt');
+      const theme = treasureManager.getThemeOverrides();
+      if (theme) {
+        const colorFn = chalk[theme.color] || chalk.yellow;
+        return colorFn(`  ${theme.name} ${theme.icon} > `);
+      }
+    } catch { /* ignore */ }
+
     const icon = promptIcons[currentRegime] || '👑';
     const name = promptNames[currentRegime] || '天子';
     return chalk.yellow(`  ${name} ${icon} > `);
@@ -731,7 +741,7 @@ async function startRepl(options) {
     ${chalk.cyan('/cost')}           户部报账
     ${chalk.cyan('/history')}        旨意历史
 
-  ${chalk.gray('── 独创功能 (Claude Code 没有的) ──')}
+  ${chalk.gray('── 进阶功能 ──')}
     ${chalk.cyan('/dream')}          🔮 朝堂梦境 — AI 预判你下一步需要什么
     ${chalk.cyan('/collab')}         📋 六部联名 — 多 Agent 协同编码
     ${chalk.cyan('/oracle')}         📜 天书降世 — 粘贴错误日志自动修复
@@ -746,7 +756,7 @@ async function startRepl(options) {
     ${chalk.cyan('/autopsy')}        🔍 大理寺 — 故障验尸报告
     ${chalk.cyan('/replay --weekly')} 📊 自动生成周报
 
-  ${chalk.gray('── 社交 & 趣味 ──')}
+  ${chalk.gray('── 趣味 ──')}
     ${chalk.cyan('/treasure')}       🗺️  寻宝奇缘 — 提示词寻宝游戏
     ${chalk.cyan('/personality')}    🧬 性格档案 — MBTI × 星座 × 合拍度
 

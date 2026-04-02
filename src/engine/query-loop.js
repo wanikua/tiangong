@@ -229,8 +229,36 @@ async function startSession(prompt, options = {}) {
         console.log(chalk.gray('  └──────────────────────────────────────────────'));
       }
 
+      // 庆祝动画（金榜题名宝藏效果）
+      try {
+        const { treasureManager } = require('../features/treasure-hunt');
+        if (treasureManager.isEffectActive('scroll_ascii_party')) {
+          const { playCelebration } = require('../features/treasure-animation');
+          await playCelebration();
+        }
+      } catch { /* ignore */ }
+
       console.log();
       console.log(chalk.green(`  🏛️  ${L.done}`));
+
+      // 惊喜掉落：任务完成后随机掉宝藏
+      try {
+        const { treasureManager } = require('../features/treasure-hunt');
+        const surprise = treasureManager.checkSurpriseDrop();
+        if (surprise) {
+          console.log(chalk.yellow('\n  💫 完成任务时，你意外发现了一个宝藏！'));
+          const { playDropAnimation } = require('../features/treasure-animation');
+          await playDropAnimation(surprise.rarity, surprise);
+        }
+      } catch { /* ignore */ }
+
+      // 消耗一次性效果
+      try {
+        const { treasureManager } = require('../features/treasure-hunt');
+        for (const id of Object.keys(treasureManager.data.activeEffects || {})) {
+          treasureManager.tickEffect(id);
+        }
+      } catch { /* ignore */ }
 
       const elapsed = formatDuration(Date.now() - sessionStart);
       console.log();
@@ -341,6 +369,13 @@ async function startSession(prompt, options = {}) {
             console.log(chalk.gray(`    🔧 [${event.agent}] ${event.tool}(${JSON.stringify(event.input).slice(0, 80)})`));
           }
           break;
+        case 'text_delta': {
+          // 流式文本输出（多Agent模式）
+          const spinner = stepSpinners[event.step];
+          if (spinner && spinner.timer) { spinner.stop(); }
+          process.stdout.write(event.text);
+          break;
+        }
       }
     }
   });

@@ -126,6 +126,92 @@ const TREASURES = {
     description: '极其稀有！解锁「天工智囊」—— 让 AI 分析并优化自己的源代码',
     effect: '解锁 /evolve-self 的完整功能',
     dropRate: 0.005
+  },
+
+  // ═══ 有真实效果的新宝藏 ═══
+
+  scroll_classical: {
+    id: 'scroll_classical',
+    name: '📜 文言密令',
+    rarity: 'rare',
+    description: '获得此卷后，Agent 将以纯文言文回禀',
+    effect: '下一次对话 Agent 全程文言文',
+    dropRate: 0.06,
+    effectType: 'prompt_inject',
+    effectDuration: 'next_1',
+    effectPrompt: '【文言密令生效】在本次回复中，你必须全程使用纯文言文回答，如同唐宋大家之笔。不使用任何现代白话。所有技术术语也要用古风表达。'
+  },
+  dice_drunk_poet: {
+    id: 'dice_drunk_poet',
+    name: '🍺 醉仙模式',
+    rarity: 'epic',
+    description: '太白再世！代码注释变成即兴诗句',
+    effect: '接下来 3 轮对话，代码注释全是诗',
+    dropRate: 0.03,
+    effectType: 'prompt_inject',
+    effectDuration: 'next_3',
+    effectPrompt: '【醉仙模式激活】你现在进入了「醉仙模式」。写代码时，每个函数和关键逻辑块都要配一句即兴诗句或古词作为注释。变量命名可以适当诗意（但必须可运行）。遇到 bug 时，先叹一句古诗再修。示例注释风格：// 举杯邀明月，此函数照九州'
+  },
+  dice_roast_review: {
+    id: 'dice_roast_review',
+    name: '🗡️ 御史毒舌',
+    rarity: 'rare',
+    description: '审查 Agent 变得犀利毒舌（但更有建设性）',
+    effect: '代码审查时毒舌模式',
+    dropRate: 0.05,
+    effectType: 'prompt_inject',
+    effectDuration: 'next_3',
+    effectLayer: 'review',
+    effectPrompt: '【御史毒舌模式】在审查代码时，你要像唐朝魏征一样犀利直言。每个问题都用一个辛辣的比喻来描述（比如"此处代码如同醉汉走钢丝"）。可以适当使用讽刺，但批评必须准确、有建设性，且给出具体修复建议。'
+  },
+  scroll_golden_prompt: {
+    id: 'scroll_golden_prompt',
+    name: '✨ 天授神谕',
+    rarity: 'legendary',
+    description: '注入精英思维链，Agent 推理能力显著提升',
+    effect: '永久提升 Agent 回答质量',
+    dropRate: 0.008,
+    effectType: 'prompt_inject',
+    effectDuration: 'permanent',
+    effectPrompt: '【天授神谕·永久增益】在回答每个问题前，先在内心进行三步推演：1) 用第一性原理拆解问题本质 2) 列出 2-3 个可能的解法并快速评估 3) 选择最优解后再开口。回答时展示你的推理过程，让陛下看到你的思考路径。对于代码任务，先读懂现有代码的设计意图再动手。'
+  },
+  scroll_ascii_party: {
+    id: 'scroll_ascii_party',
+    name: '🎊 金榜题名',
+    rarity: 'uncommon',
+    description: '任务完成时触发庆祝动画',
+    effect: '成功完成任务后显示庆祝 ASCII art',
+    dropRate: 0.10,
+    effectType: 'animation',
+    effectDuration: 'permanent'
+  },
+  robe_complete: {
+    id: 'robe_complete',
+    name: '🐲 龙袍天成',
+    rarity: 'legendary',
+    description: '集齐五片龙袍碎片后自动合成！REPL 主题变为金色龙纹',
+    effect: '永久改变 REPL 外观：金色提示符 + 龙图标',
+    dropRate: 0,  // 不掉落，集齐自动合成
+    effectType: 'repl_theme',
+    effectDuration: 'permanent',
+    themeOverrides: { icon: '🐲', name: '真龙天子', color: 'yellow' }
+  },
+  dice_wildcard: {
+    id: 'dice_wildcard',
+    name: '🎰 天命轮盘',
+    rarity: 'uncommon',
+    description: '每次使用随机触发一种微效果',
+    effect: '随机：文言/emoji/毒舌/诗人 其中一种',
+    dropRate: 0.08,
+    effectType: 'random_pool',
+    effectDuration: 'next_1',
+    randomPool: [
+      '【天命：文言】本次全程文言文回答。',
+      '【天命：颜文字】本次回答中大量使用 emoji 和颜文字 (╯°□°)╯。',
+      '【天命：毒舌】本次回答直言不讳，犀利吐槽，但有建设性。',
+      '【天命：诗仙】本次回答中穿插古诗词，代码注释也是诗。',
+      '【天命：导师】本次以苏格拉底式提问引导用户，不直接给答案。',
+    ]
   }
 };
 
@@ -248,6 +334,8 @@ class TreasureManager {
           foundAt: new Date().toISOString(),
           method: 'hunt'
         };
+        // 自动激活效果
+        if (treasure.effectType) this.activateEffect(treasure.id);
         this._save();
 
         const rarityLabels = {
@@ -258,13 +346,16 @@ class TreasureManager {
           common: chalk.gray('普通')
         };
 
-        console.log(chalk.yellow('  ┌──────────────────────────────────────┐'));
-        console.log(chalk.yellow('  │') + chalk.bold.yellow('  🎉  发 现 宝 藏 ！') + '                    ' + chalk.yellow('│'));
-        console.log(chalk.yellow('  │') + `  ${treasure.name}`.padEnd(38) + chalk.yellow('│'));
-        console.log(chalk.yellow('  │') + `  品质: ${rarityLabels[treasure.rarity]}`.padEnd(38) + chalk.yellow('│'));
-        console.log(chalk.yellow('  │') + chalk.gray(`  ${treasure.description}`.padEnd(38)) + chalk.yellow('│'));
-        console.log(chalk.yellow('  │') + chalk.green(`  效果: ${treasure.effect}`.padEnd(38)) + chalk.yellow('│'));
-        console.log(chalk.yellow('  └──────────────────────────────────────┘'));
+        // 播放稀有度分级动画
+        try {
+          const { playDropAnimation } = require('./treasure-animation');
+          playDropAnimation(treasure.rarity, treasure).catch(() => {});
+        } catch {
+          // fallback 静态输出
+          console.log(chalk.yellow(`  🎁 发现宝藏: ${treasure.name}`));
+          console.log(chalk.gray(`     ${treasure.description}`));
+          console.log(chalk.green(`     效果: ${treasure.effect}`));
+        }
         console.log();
 
         break; // 每次最多找到一个
@@ -417,6 +508,155 @@ class TreasureManager {
     console.log(chalk.green('\n  🎁 兑换成功！获得 +3% 寻宝概率加成'));
     console.log(chalk.yellow('  赠送一次免费寻宝：'));
     this.hunt();
+  }
+
+  // ═══ 宝藏效果引擎 ═══
+
+  /**
+   * 激活宝藏效果
+   * @param {string} treasureId
+   */
+  activateEffect(treasureId) {
+    const treasure = TREASURES[treasureId];
+    if (!treasure?.effectType) return;
+
+    if (!this.data.activeEffects) this.data.activeEffects = {};
+
+    if (treasure.effectDuration === 'permanent') {
+      this.data.activeEffects[treasureId] = { permanent: true, activatedAt: Date.now() };
+    } else if (treasure.effectDuration?.startsWith('next_')) {
+      const uses = parseInt(treasure.effectDuration.split('_')[1]) || 1;
+      this.data.activeEffects[treasureId] = { usesRemaining: uses, activatedAt: Date.now() };
+    }
+    this._save();
+  }
+
+  /**
+   * 消耗一次效果使用次数
+   * @param {string} treasureId
+   */
+  tickEffect(treasureId) {
+    if (!this.data.activeEffects?.[treasureId]) return;
+    const effect = this.data.activeEffects[treasureId];
+    if (effect.permanent) return;
+    if (effect.usesRemaining > 0) {
+      effect.usesRemaining--;
+      if (effect.usesRemaining <= 0) {
+        delete this.data.activeEffects[treasureId];
+      }
+      this._save();
+    }
+  }
+
+  /**
+   * 检查效果是否活跃
+   * @param {string} treasureId
+   * @returns {boolean}
+   */
+  isEffectActive(treasureId) {
+    // 永久效果：只要收集了就活跃
+    const treasure = TREASURES[treasureId];
+    if (treasure?.effectDuration === 'permanent' && this.data.collected[treasureId]) {
+      return true;
+    }
+    return !!this.data.activeEffects?.[treasureId];
+  }
+
+  /**
+   * 获取当前所有活跃的 prompt 注入文本（供 prompt-builder 使用）
+   * @param {string} [agentLayer] - 过滤特定层级 (planning/review/execution)
+   * @returns {string|null}
+   */
+  getPromptInjections(agentLayer) {
+    const injections = [];
+
+    for (const [id, effect] of Object.entries(this.data.activeEffects || {})) {
+      const treasure = TREASURES[id];
+      if (!treasure || treasure.effectType !== 'prompt_inject') continue;
+      // 层级过滤
+      if (treasure.effectLayer && agentLayer && treasure.effectLayer !== agentLayer) continue;
+
+      if (treasure.effectType === 'prompt_inject') {
+        injections.push(treasure.effectPrompt);
+      }
+    }
+
+    // 永久效果（已收集即生效）
+    for (const [id, info] of Object.entries(this.data.collected || {})) {
+      const treasure = TREASURES[id];
+      if (!treasure || treasure.effectType !== 'prompt_inject') continue;
+      if (treasure.effectDuration !== 'permanent') continue;
+      if (treasure.effectLayer && agentLayer && treasure.effectLayer !== agentLayer) continue;
+      if (!injections.includes(treasure.effectPrompt)) {
+        injections.push(treasure.effectPrompt);
+      }
+    }
+
+    // 天命轮盘：随机选一个
+    if (this.data.activeEffects?.dice_wildcard) {
+      const wildcard = TREASURES.dice_wildcard;
+      const pool = wildcard.randomPool;
+      const pick = pool[Math.floor(Math.random() * pool.length)];
+      injections.push(pick);
+    }
+
+    // 龙袍合成检查
+    this._checkRobeComplete();
+
+    return injections.length > 0 ? '\n## 🎁 宝藏效果\n' + injections.join('\n') : null;
+  }
+
+  /**
+   * 获取 REPL 主题覆盖（龙袍合成效果）
+   * @returns {object|null}
+   */
+  getThemeOverrides() {
+    if (this.data.collected?.robe_complete) {
+      return TREASURES.robe_complete.themeOverrides;
+    }
+    return null;
+  }
+
+  /**
+   * 惊喜掉落 — 普通使用中随机掉宝藏（3% 基础概率）
+   * @returns {object|null} 找到的宝藏，或 null
+   */
+  checkSurpriseDrop() {
+    const baseRate = 0.03;
+    const bonus = this.data.bonusDropRate || 0;
+    if (Math.random() > baseRate + bonus) return null;
+
+    const uncollected = Object.values(TREASURES)
+      .filter(t => !this.data.collected[t.id] && t.dropRate > 0);
+    if (uncollected.length === 0) return null;
+
+    // 按 dropRate 加权随机选一个
+    const totalWeight = uncollected.reduce((s, t) => s + t.dropRate, 0);
+    let roll = Math.random() * totalWeight;
+    for (const treasure of uncollected) {
+      roll -= treasure.dropRate;
+      if (roll <= 0) {
+        // 找到了！
+        this.data.collected[treasure.id] = { foundAt: new Date().toISOString(), method: 'surprise' };
+        if (treasure.effectType) this.activateEffect(treasure.id);
+        this._save();
+        return treasure;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * 检查龙袍碎片是否集齐，自动合成
+   * @private
+   */
+  _checkRobeComplete() {
+    if (this.data.collected?.robe_complete) return;
+    const hasAll = [1,2,3,4,5].every(n => this.data.collected[`robe_${n}`]);
+    if (hasAll) {
+      this.data.collected.robe_complete = { foundAt: new Date().toISOString(), method: 'synthesis' };
+      this._save();
+    }
   }
 
   /** @private */

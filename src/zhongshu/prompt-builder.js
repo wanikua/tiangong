@@ -106,6 +106,13 @@ function buildSystemPrompt(agentId, regimeId = 'ming', context = {}) {
     if (overlay) parts.push(overlay);
   } catch { /* optimizer not loaded */ }
 
+  // 宝藏效果注入（寻宝系统的 prompt 修改）
+  try {
+    const { treasureManager } = require('../features/treasure-hunt');
+    const treasurePrompt = treasureManager.getPromptInjections(agent.layer);
+    if (treasurePrompt) parts.push(treasurePrompt);
+  } catch { /* treasure module not loaded */ }
+
   // 额外上下文
   if (context.cwd) {
     parts.push(`\n## 工作目录\n${context.cwd}`);

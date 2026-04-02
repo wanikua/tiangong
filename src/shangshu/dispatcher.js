@@ -11,7 +11,7 @@
 const chalk = require('chalk');
 const { PermissionGate } = require('../menxia/permission-gate');
 const { checkCommandSafety } = require('../menxia/security-check');
-const { callLLM } = require('./li/api-client');
+const { callLLM, callLLMStreaming } = require('./li/api-client');
 const { getToolSchemas, executeTool, executeToolsBatched } = require('./bing/tools');
 const { CostTracker } = require('./hu/cost-tracker');
 const { buildSystemPrompt } = require('../zhongshu/prompt-builder');
