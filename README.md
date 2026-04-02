@@ -8,7 +8,7 @@
 [![Node.js](https://img.shields.io/badge/Node.js-≥22-green.svg)](https://nodejs.org)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-> **[English](#english) | [中文](#中文)**
+> **[English](#english) | [中文](#中文) | [🏛️ 当皇上 danghuangshang (OpenClaw版)](https://github.com/wanikua/danghuangshang) | [🌐 官网 danghuangshang.com](https://danghuangshang.com)**
 
 ---
 
@@ -427,3 +427,7 @@ MIT
 **「思考，是人类最后的自由。」—— 查理·芒格**
 
 **"The right thinking framework matters more than intelligence." — Charlie Munger**
+
+v0.1.0 | MIT License | [User Agreement](https://danghuangshang.com) | [Privacy Policy](https://danghuangshang.com)
+
+> 📜 Licensed under MIT. Credit: [danghuangshang](https://github.com/wanikua/danghuangshang) by [@wanikua](https://github.com/wanikua)
