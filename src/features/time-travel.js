@@ -130,7 +130,7 @@ class SessionRecorder {
       try {
         const session = JSON.parse(fs.readFileSync(path.join(SESSION_DIR, f), 'utf-8'));
         return { index: i + 1, ...session };
-      } catch { return null; }
+      } catch { /* corrupted session file, skip */ return null; }
     }).filter(Boolean);
   }
 
@@ -141,7 +141,7 @@ class SessionRecorder {
    */
   getSession(indexOrId) {
     if (typeof indexOrId === 'number') {
-      const sessions = this.listSessions(indexOrId);
+      const sessions = this.listSessions(Math.max(indexOrId, 100));
       return sessions[indexOrId - 1] || null;
     }
     return this._load(indexOrId);

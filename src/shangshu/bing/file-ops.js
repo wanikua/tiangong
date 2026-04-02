@@ -137,7 +137,8 @@ function editFile(filePath, oldString, newString, replaceAll = false) {
   let content = fs.readFileSync(filePath, 'utf-8');
 
   if (!content.includes(oldString)) {
-    throw new Error(`未找到要替换的文本`);
+    const preview = oldString.length > 60 ? oldString.slice(0, 60) + '...' : oldString;
+    throw new Error(`未找到要替换的文本: "${preview}"`);
   }
 
   let replaced = 0;

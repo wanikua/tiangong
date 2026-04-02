@@ -172,11 +172,13 @@ async function runExam(params) {
         let score = 0;
         let comment = '';
         try {
-          const scoreData = JSON.parse(scoreResponse.content.match(/\{[\s\S]*\}/)?.[0] || '{}');
-          score = Math.min(Math.max(0, scoreData.score || 0), question.maxScore);
+          const rawContent = scoreResponse.content || '';
+          const jsonMatch = rawContent.match(/\{[\s\S]*\}/);
+          const scoreData = JSON.parse(jsonMatch ? jsonMatch[0] : '{}');
+          score = Math.min(Math.max(0, Number(scoreData.score) || 0), question.maxScore);
           comment = scoreData.comment || '';
         } catch {
-          score = Math.round(question.maxScore * 0.5); // 评分失败给中等分
+          score = Math.round(question.maxScore * 0.5);
           comment = '(评分解析失败)';
         }
 

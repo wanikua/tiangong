@@ -175,25 +175,16 @@ async function runDebate(params) {
  * @private
  */
 function selectParticipants(topic, regime) {
+  const agents = regime.agents || [];
+
   // 决策层一定参与
-  const planners = regime.agents.filter(a => a.layer === 'planning').slice(0, 2);
+  const planners = agents.filter(a => a.layer === 'planning').slice(0, 2);
 
-  // 根据话题选择相关执行层
-  const keywords = {
-    coding: /代码|开发|编程|bug|api|接口|code|develop/i,
-    devops: /部署|运维|docker|ci|服务器|deploy/i,
-    finance: /成本|预算|费用|cost|budget/i,
-    security: /安全|漏洞|权限|security/i,
-  };
-
-  const executors = [];
-  for (const agent of regime.agents.filter(a => a.layer === 'execution')) {
-    executors.push(agent);
-    if (executors.length >= 3) break; // 最多3个执行层参与
-  }
+  // 执行层（最多3个参与）
+  const executors = agents.filter(a => a.layer === 'execution').slice(0, 3);
 
   // 审核层参与
-  const reviewers = regime.agents.filter(a => a.layer === 'review').slice(0, 1);
+  const reviewers = agents.filter(a => a.layer === 'review').slice(0, 1);
 
   const all = [...planners, ...executors, ...reviewers];
   return [...new Set(all.map(a => a.id))];

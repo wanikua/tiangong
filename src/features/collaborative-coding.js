@@ -116,7 +116,6 @@ async function runCollaborativeCoding(params) {
         maxTokens: 2048
       });
       architectureOutput = response.content || '';
-      const tokens = (response.usage?.input_tokens || 0) + (response.usage?.output_tokens || 0);
       costTracker.record(agentId, model || 'claude-sonnet-4-6',
         response.usage?.input_tokens || 0, response.usage?.output_tokens || 0);
 

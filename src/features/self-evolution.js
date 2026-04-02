@@ -377,7 +377,9 @@ function evolveMemory() {
   for (const [agentId, memories] of Object.entries(allMemories.agents)) {
     const before = memories.length;
     const kept = memories.filter(m => {
-      const age = now - new Date(m.createdAt).getTime();
+      const createdTime = new Date(m.createdAt).getTime();
+      if (isNaN(createdTime)) return m.weight >= 7 || m.type === 'mistake';
+      const age = now - createdTime;
       // 保留：30天内的、或被访问过的、或权重高的、或是教训类的
       return age < thirtyDaysMs || m.accessCount > 0 || m.weight >= 7 || m.type === 'mistake';
     });

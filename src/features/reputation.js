@@ -145,9 +145,9 @@ class ReputationManager {
     const oldRank = this.getRank(agentId);
     const xp = XP_REWARDS[reason] || 0;
 
-    agent.xp += xp;
+    agent.xp = (agent.xp || 0) + xp;
     agent.totalTasks++;
-    if (reason.startsWith('task_complete') || reason === 'task_fast' || reason === 'review_pass') {
+    if (reason === 'task_complete' || reason === 'task_fast' || reason === 'review_pass') {
       agent.successTasks++;
       agent.streak++;
       agent.bestStreak = Math.max(agent.bestStreak, agent.streak);
@@ -191,7 +191,7 @@ class ReputationManager {
     const agent = this.getAgent(agentId);
     const xp = XP_PENALTIES[reason] || 0;
 
-    agent.xp = Math.max(0, agent.xp + xp); // 不会降到 0 以下
+    agent.xp = Math.max(0, (agent.xp || 0) + xp); // 不会降到 0 以下
     agent.failedTasks++;
     agent.streak = 0; // 断连
 

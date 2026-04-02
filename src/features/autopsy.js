@@ -89,8 +89,9 @@ function generateAutopsy(session) {
   };
 
   // 分析失败步骤
-  const failedStepEvents = session.steps.filter(s => s.type === 'step_failed');
-  const successStepEvents = session.steps.filter(s => s.type === 'step_complete');
+  const steps = session.steps || [];
+  const failedStepEvents = steps.filter(s => s.type === 'step_failed');
+  const successStepEvents = steps.filter(s => s.type === 'step_complete');
 
   for (const step of failedStepEvents) {
     const category = categorizeError(step.error || '');

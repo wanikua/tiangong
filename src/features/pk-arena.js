@@ -95,7 +95,8 @@ async function runPK(params) {
       };
 
       const result = await dispatcher.executePlan(plan);
-      const output = result.results[1]?.output?.content || '(无输出)';
+      const firstResult = Object.values(result.results)[0];
+      const output = firstResult?.output?.content || '(无输出)';
 
       spinner.succeed(`${name} 答题完成`);
       results[agentId] = { output, success: true, name };
@@ -151,7 +152,8 @@ async function runPK(params) {
 
     try {
       const judgeResult = await dispatcher.executePlan(judgePlan);
-      const verdict = judgeResult.results[1]?.output?.content || '(评判无输出)';
+      const judgeFirstResult = Object.values(judgeResult.results)[0];
+      const verdict = judgeFirstResult?.output?.content || '(评判无输出)';
 
       console.log(chalk.yellow('  主考官评语:'));
       console.log();
