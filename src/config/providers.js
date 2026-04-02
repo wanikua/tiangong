@@ -47,6 +47,36 @@ const PROVIDERS = {
     models: ['qwen-max', 'qwen-plus', 'qwen-turbo', 'qwen-long'],
     defaultModel: 'qwen-max'
   },
+  ollama: {
+    name: 'Ollama (本地模型)',
+    baseUrl: 'http://localhost:11434/v1',
+    envKey: 'OLLAMA_API_KEY',
+    models: [
+      'llama3.1:8b',
+      'llama3.1:70b',
+      'qwen2.5:7b',
+      'qwen2.5:32b',
+      'qwen2.5-coder:7b',
+      'qwen2.5-coder:32b',
+      'deepseek-r1:7b',
+      'deepseek-r1:32b',
+      'codellama:13b',
+      'mistral:7b',
+      'mixtral:8x7b',
+      'phi3:medium',
+      'gemma2:9b'
+    ],
+    defaultModel: 'qwen2.5-coder:7b',
+    local: true // 标记为本地模型
+  },
+  lmstudio: {
+    name: 'LM Studio (本地模型)',
+    baseUrl: 'http://localhost:1234/v1',
+    envKey: 'LMSTUDIO_API_KEY',
+    models: [],
+    defaultModel: null,
+    local: true
+  },
   custom: {
     name: '自定义 (OpenAI 兼容)',
     baseUrl: null, // 用户自己输入

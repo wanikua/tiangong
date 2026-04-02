@@ -18,6 +18,9 @@ const PRICING = {
   'qwen-max': { input: 2.0, output: 6.0 },
   'qwen-plus': { input: 0.8, output: 2.0 },
   'qwen-turbo': { input: 0.3, output: 0.6 },
+  // Ollama / 本地模型 (免费)
+  'ollama': { input: 0, output: 0 },
+  'lmstudio': { input: 0, output: 0 },
   // OpenRouter (prefix matching in record())
   'anthropic/claude-sonnet-4-6': { input: 3.0, output: 15.0 },
   'anthropic/claude-opus-4-6': { input: 15.0, output: 75.0 },
@@ -41,7 +44,11 @@ class CostTracker {
    * @param {number} outputTokens
    */
   record(agentId, model, inputTokens, outputTokens) {
-    const pricing = PRICING[model] || PRICING['claude-sonnet-4-6'];
+    // 尝试精确匹配，否则回退到默认
+    // 本地模型（含冒号如 qwen2.5-coder:7b）免费
+    const pricing = PRICING[model]
+      || (model && model.includes(':') ? { input: 0, output: 0 } : null) // Ollama 格式
+      || PRICING['claude-sonnet-4-6'];
     const cost = (inputTokens * pricing.input + outputTokens * pricing.output) / 1_000_000;
 
     this.usage.inputTokens += inputTokens;

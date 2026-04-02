@@ -28,7 +28,8 @@ async function callLLM(params) {
   const provider = getProvider(providerId);
   const apiKey = params.apiKey || getApiKey(providerId);
 
-  if (!apiKey) {
+  // 本地模型不强制要求 API Key
+  if (!apiKey && !provider.local) {
     throw new Error(`未配置 ${provider.name} API Key，请运行 tiangong setup`);
   }
 
@@ -108,9 +109,13 @@ async function callOpenAICompatible(params) {
   }
 
   const headers = {
-    'authorization': `Bearer ${params.apiKey}`,
     'content-type': 'application/json'
   };
+
+  // 本地模型不需要 auth header
+  if (params.apiKey && params.apiKey !== 'local') {
+    headers['authorization'] = `Bearer ${params.apiKey}`;
+  }
 
   // OpenRouter 额外 headers
   if (params.providerId === 'openrouter') {

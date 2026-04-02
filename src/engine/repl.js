@@ -399,6 +399,34 @@ async function startRepl(options) {
       return;
     }
 
+    if (input.startsWith('/evolve-self') || input.startsWith('/自进化')) {
+      const { analyzeEvolutionOpportunities, evolvePrompt, evolveMemory, printEvolutionHistory } = require('../features/self-evolution');
+      const args = input.replace(/^\/(evolve-self|自进化)\s*/, '').trim();
+
+      isProcessing = true;
+      try {
+        if (args === '--history' || args === '历史') {
+          printEvolutionHistory();
+        } else if (args === '--memory' || args === '记忆') {
+          evolveMemory();
+        } else if (args.startsWith('--prompt')) {
+          const agentId = args.replace('--prompt', '').trim();
+          if (agentId) {
+            await evolvePrompt(agentId);
+          } else {
+            console.log(chalk.yellow('\n  用法: /evolve-self --prompt <AgentId>\n'));
+          }
+        } else {
+          await analyzeEvolutionOpportunities();
+        }
+      } catch (err) {
+        console.error(chalk.red(`\n  自进化失败: ${err.message}\n`));
+      }
+      isProcessing = false;
+      rl.prompt();
+      return;
+    }
+
     if (input.startsWith('/evolve') || input.startsWith('/更迭')) {
       const { analyzeAndRecommend } = require('../features/regime-evolution');
       const result = analyzeAndRecommend({ currentRegime, cwd: process.cwd() });
@@ -464,6 +492,58 @@ async function startRepl(options) {
       return;
     }
 
+    if (input.startsWith('/treasure') || input.startsWith('/寻宝')) {
+      const { treasureManager } = require('../features/treasure-hunt');
+      const args = input.replace(/^\/(treasure|寻宝)\s*/, '').trim();
+
+      if (args === 'hunt' || args === '探索') {
+        treasureManager.hunt();
+      } else if (args === 'riddle' || args === '谜语') {
+        treasureManager.getRiddle();
+      } else if (args.startsWith('answer ')) {
+        treasureManager.answerRiddle(args.replace('answer ', ''));
+      } else if (args === 'share' || args === '分享') {
+        treasureManager.share();
+      } else if (args === 'star') {
+        treasureManager.markStarred();
+      } else if (args.startsWith('redeem ')) {
+        treasureManager.redeem(args.replace('redeem ', '').trim());
+      } else {
+        treasureManager.printCollection();
+      }
+      rl.prompt();
+      return;
+    }
+
+    if (input.startsWith('/personality') || input.startsWith('/性格')) {
+      const { personalityManager } = require('../features/agent-personality');
+      const args = input.replace(/^\/(personality|性格)\s*/, '').trim();
+      const parts = args.split(/\s+/);
+
+      if (parts[0] === 'chemistry' && parts[1] && parts[2]) {
+        personalityManager.printChemistry(parts[1], parts[2]);
+      } else if (parts[0] === 'random') {
+        // 清除数据重新随机
+        console.log(chalk.yellow('\n  已重新随机分配所有大臣性格\n'));
+        personalityManager.data = {};
+        personalityManager._save();
+        personalityManager.printAll(currentRegime);
+      } else if (parts[1] === 'set' && parts[2] && parts[3]) {
+        try {
+          personalityManager.setPersonality(parts[0], parts[2], parts[3]);
+          console.log(chalk.green(`\n  ✓ 已设置 ${parts[0]} 的性格: ${parts[2]} ${parts[3]}\n`));
+        } catch (err) {
+          console.log(chalk.red(`\n  设置失败: ${err.message}\n`));
+        }
+      } else if (parts[0] && parts[0] !== '') {
+        personalityManager.printDetail(parts[0]);
+      } else {
+        personalityManager.printAll(currentRegime);
+      }
+      rl.prompt();
+      return;
+    }
+
     if (input.startsWith('/help') || input === '/帮助') {
       console.log(`
   ${chalk.bold.yellow('朝堂指令：')}
@@ -483,10 +563,15 @@ async function startRepl(options) {
     ${chalk.cyan('/debate')}         📣 廷议 — 多 Agent 朝堂辩论
     ${chalk.cyan('/exam')}           📝 科举考试 — Agent 能力基准测试
     ${chalk.cyan('/rank')}           🏆 功勋榜 — Agent 经验值 + 品阶
+    ${chalk.cyan('/evolve-self')}     🧬 自进化 — Agent 自我改进系统
     ${chalk.cyan('/evolve')}         👑 朝代更迭 — 智能制度自适应推荐
     ${chalk.cyan('/replay')}         📜 奏折回放 — 会话时间旅行
     ${chalk.cyan('/autopsy')}        🔍 大理寺 — 故障验尸报告
     ${chalk.cyan('/replay --weekly')} 📊 自动生成周报
+
+  ${chalk.gray('── 社交 & 趣味 ──')}
+    ${chalk.cyan('/treasure')}       🗺️  寻宝奇缘 — 提示词寻宝游戏
+    ${chalk.cyan('/personality')}    🧬 性格档案 — MBTI × 星座 × 合拍度
 
   ${chalk.gray('── 系统 ──')}
     ${chalk.cyan('/clear')}          清屏

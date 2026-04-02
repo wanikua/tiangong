@@ -283,14 +283,73 @@ async function runSetup() {
     console.log();
   }
 
-  const apiKey = await ask(chalk.yellow('    API Key: '));
-  if (!apiKey.trim()) {
-    console.log(chalk.red('    API Key 不能为空'));
-    rl.close();
-    process.exit(1);
+  let apiKey;
+  let baseUrl = provider.baseUrl;
+
+  if (provider.local) {
+    // 本地模型不需要 API Key
+    console.log(chalk.green(`    ✓ ${provider.name} 无需 API Key，自动连接本地服务\n`));
+    apiKey = 'local'; // 占位
+
+    // 尝试探测 Ollama 本地服务和可用模型
+    if (providerId === 'ollama') {
+      console.log(chalk.gray('    正在探测 Ollama 服务...'));
+      try {
+        const http = require('http');
+        const detected = await new Promise((resolve, reject) => {
+          const req = http.get('http://localhost:11434/api/tags', { timeout: 3000 }, (res) => {
+            let data = '';
+            res.on('data', chunk => data += chunk);
+            res.on('end', () => {
+              try {
+                const json = JSON.parse(data);
+                resolve(json.models || []);
+              } catch { resolve([]); }
+            });
+          });
+          req.on('error', () => resolve([]));
+          req.on('timeout', () => { req.destroy(); resolve([]); });
+        });
+
+        if (detected.length > 0) {
+          console.log(chalk.green(`    ✓ Ollama 已就绪，发现 ${detected.length} 个本地模型:`));
+          for (const m of detected.slice(0, 10)) {
+            const size = m.size ? chalk.gray(` (${(m.size / 1e9).toFixed(1)}GB)`) : '';
+            console.log(`      ${chalk.cyan('•')} ${m.name}${size}`);
+          }
+          // 动态更新可用模型列表
+          provider.models = detected.map(m => m.name);
+          if (!provider.models.includes(provider.defaultModel)) {
+            provider.defaultModel = provider.models[0];
+          }
+        } else {
+          console.log(chalk.yellow('    ⚠ Ollama 服务未运行或无模型。请先运行:'));
+          console.log(chalk.gray('      ollama serve'));
+          console.log(chalk.gray('      ollama pull qwen2.5-coder:7b'));
+        }
+        console.log();
+      } catch {
+        console.log(chalk.yellow('    ⚠ 无法连接 Ollama 服务'));
+      }
+    }
+
+    // LM Studio 自定义端口
+    if (providerId === 'lmstudio') {
+      const customPort = await ask(chalk.yellow('    LM Studio 端口 (默认 1234): '));
+      if (customPort.trim()) {
+        baseUrl = `http://localhost:${customPort.trim()}/v1`;
+      }
+    }
+  } else {
+    // 云端服务需要 API Key
+    apiKey = await ask(chalk.yellow('    API Key: '));
+    if (!apiKey.trim()) {
+      console.log(chalk.red('    API Key 不能为空'));
+      rl.close();
+      process.exit(1);
+    }
   }
 
-  let baseUrl = provider.baseUrl;
   if (providerId === 'custom') {
     baseUrl = await ask(chalk.yellow('    Base URL (OpenAI 兼容): '));
   }

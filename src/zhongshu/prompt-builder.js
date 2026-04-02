@@ -73,6 +73,13 @@ function buildSystemPrompt(agentId, regimeId = 'ming', context = {}) {
     parts.push('- 简洁直接，数据驱动');
   }
 
+  // 性格特质注入
+  try {
+    const { personalityManager } = require('../features/agent-personality');
+    const modifier = personalityManager.getPromptModifier(agentId);
+    if (modifier) parts.push(modifier);
+  } catch { /* personality module not loaded */ }
+
   // 额外上下文
   if (context.cwd) {
     parts.push(`\n## 工作目录\n${context.cwd}`);
