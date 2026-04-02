@@ -26,6 +26,11 @@ async function callLLM(params) {
   const config = loadConfig() || {};
   const providerId = params.providerId || config.provider || 'anthropic';
   const provider = getProvider(providerId);
+
+  if (!provider) {
+    throw new Error(`未知的 LLM 提供商: ${providerId}。请运行 tiangong setup 重新配置`);
+  }
+
   const apiKey = params.apiKey || getApiKey(providerId);
 
   // 本地模型不强制要求 API Key
