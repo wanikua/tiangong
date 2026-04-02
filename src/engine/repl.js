@@ -310,6 +310,112 @@ async function startRepl(options) {
       return;
     }
 
+    if (input.startsWith('/dream') || input.startsWith('/梦境')) {
+      const { runDreamEngine } = require('../features/dream-engine');
+      const args = input.replace(/^\/(dream|梦境)\s*/, '').trim();
+      const deep = args.includes('--deep');
+
+      isProcessing = true;
+      try {
+        const premonitions = await runDreamEngine({ cwd: process.cwd(), deep });
+        // 处理 --act
+        const actMatch = args.match(/--act\s+(\d+)/);
+        if (actMatch && premonitions.length > 0) {
+          const actIndex = parseInt(actMatch[1]) - 1;
+          if (actIndex >= 0 && actIndex < premonitions.length) {
+            const p = premonitions[actIndex];
+            console.log(chalk.green(`  执行预感 #${actIndex + 1}: ${p.actionable || p.title}`));
+            await startSession(p.actionable || p.title, { ...options, regime: currentRegime });
+          }
+        }
+      } catch (err) {
+        console.error(chalk.red(`\n  梦境引擎失败: ${err.message}\n`));
+      }
+      isProcessing = false;
+      rl.prompt();
+      return;
+    }
+
+    if (input.startsWith('/collab') || input.startsWith('/协同')) {
+      const { runCollaborativeCoding } = require('../features/collaborative-coding');
+      const args = input.replace(/^\/(collab|协同)\s*/, '').trim();
+
+      if (!args) {
+        console.log(chalk.yellow('\n  用法: /collab "任务描述"'));
+        console.log(chalk.gray('  示例: /collab "写一个用户认证模块"'));
+        console.log(chalk.gray('  六部同时协作：架构设计 + 编码 + 安全审计 + 测试 + Code Review\n'));
+        rl.prompt();
+        return;
+      }
+
+      isProcessing = true;
+      try {
+        await runCollaborativeCoding({ task: args.replace(/^["']|["']$/g, ''), regimeId: currentRegime });
+      } catch (err) {
+        console.error(chalk.red(`\n  协同失败: ${err.message}\n`));
+      }
+      isProcessing = false;
+      rl.prompt();
+      return;
+    }
+
+    if (input.startsWith('/oracle') || input.startsWith('/天书')) {
+      const { analyzeAndFix } = require('../features/crash-oracle');
+      let errorLog = input.replace(/^\/(oracle|天书)\s*/, '').trim();
+
+      // 从文件读取
+      const fileMatch = errorLog.match(/--file\s+(\S+)/);
+      if (fileMatch) {
+        const fs = require('fs');
+        try {
+          errorLog = fs.readFileSync(fileMatch[1], 'utf-8');
+        } catch (err) {
+          console.log(chalk.red(`\n  无法读取文件: ${err.message}\n`));
+          rl.prompt();
+          return;
+        }
+      }
+
+      if (!errorLog) {
+        console.log(chalk.yellow('\n  用法: /oracle <粘贴错误日志>'));
+        console.log(chalk.gray('  示例: /oracle TypeError: Cannot read properties of undefined'));
+        console.log(chalk.gray('  示例: /oracle --file crash.log'));
+        console.log(chalk.gray('  天书会自动分析根因并生成修复代码\n'));
+        rl.prompt();
+        return;
+      }
+
+      const autoApply = errorLog.includes('--apply');
+      errorLog = errorLog.replace('--apply', '').trim();
+
+      isProcessing = true;
+      try {
+        await analyzeAndFix({ errorLog, autoApply, cwd: process.cwd() });
+      } catch (err) {
+        console.error(chalk.red(`\n  天书分析失败: ${err.message}\n`));
+      }
+      isProcessing = false;
+      rl.prompt();
+      return;
+    }
+
+    if (input.startsWith('/evolve') || input.startsWith('/更迭')) {
+      const { analyzeAndRecommend } = require('../features/regime-evolution');
+      const result = analyzeAndRecommend({ currentRegime, cwd: process.cwd() });
+
+      // --auto 自动切换
+      if (input.includes('--auto') && result.shouldSwitch) {
+        const oldRegime = currentRegime;
+        currentRegime = result.recommended;
+        options.regime = currentRegime;
+        rl.setPrompt(getPrompt());
+        console.log(chalk.green.bold(`  ⚡ 已自动更迭为 ${currentRegime}`));
+      }
+
+      rl.prompt();
+      return;
+    }
+
     if (input.startsWith('/exam') || input.startsWith('/科举')) {
       const { runExam } = require('../features/imperial-exam');
       const args = input.replace(/^\/(exam|科举)\s*/, '').trim();
@@ -369,11 +475,15 @@ async function startRepl(options) {
     ${chalk.cyan('/cost')}           户部报账
     ${chalk.cyan('/history')}        旨意历史
 
-  ${chalk.gray('── 独创功能 ──')}
+  ${chalk.gray('── 独创功能 (Claude Code 没有的) ──')}
+    ${chalk.cyan('/dream')}          🔮 朝堂梦境 — AI 预判你下一步需要什么
+    ${chalk.cyan('/collab')}         📋 六部联名 — 多 Agent 协同编码
+    ${chalk.cyan('/oracle')}         📜 天书降世 — 粘贴错误日志自动修复
     ${chalk.cyan('/pk')}             ⚔️  武举殿试 — Agent 对决擂台
     ${chalk.cyan('/debate')}         📣 廷议 — 多 Agent 朝堂辩论
-    ${chalk.cyan('/rank')}           🏆 功勋榜 — Agent 经验值排行
     ${chalk.cyan('/exam')}           📝 科举考试 — Agent 能力基准测试
+    ${chalk.cyan('/rank')}           🏆 功勋榜 — Agent 经验值 + 品阶
+    ${chalk.cyan('/evolve')}         👑 朝代更迭 — 智能制度自适应推荐
     ${chalk.cyan('/replay')}         📜 奏折回放 — 会话时间旅行
     ${chalk.cyan('/autopsy')}        🔍 大理寺 — 故障验尸报告
     ${chalk.cyan('/replay --weekly')} 📊 自动生成周报
