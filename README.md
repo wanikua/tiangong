@@ -26,21 +26,101 @@ TianGong is a **self-evolving multi-agent AI framework** that maps China's ancie
 - **MBTI × Zodiac personality**: Each agent has unique personality traits that affect behavior
 - **Viral treasure hunt**: A gamified system that drives organic adoption
 
-## Quick Start
+## Installation
+
+**Prerequisites**: [Node.js](https://nodejs.org) >= 22
 
 ```bash
+# 1. Clone
 git clone https://github.com/wanikua/tiangong.git
-cd tiangong && npm install
+cd tiangong
 
-# Interactive mode (recommended)
+# 2. Install dependencies
+npm install
+
+# 3. First run — "Coronation Ceremony" (登基大典)
+#    This will guide you through:
+#      - Choose LLM provider (Anthropic / OpenRouter / Ollama / ...)
+#      - Enter API Key (Ollama = no key needed)
+#      - Choose governance system (Ming / Tang / Modern)
+#      - Choose default model
+node bin/tiangong.js
+```
+
+### Using Ollama (Free, Local, No API Key)
+
+```bash
+# Install Ollama: https://ollama.com
+# Then pull a model:
+ollama pull qwen2.5-coder:7b
+
+# Start tiangong, choose "Ollama" during setup
+node bin/tiangong.js
+```
+
+### Using Anthropic Claude
+
+```bash
+# Get API key: https://console.anthropic.com/settings/keys
+# Start tiangong, choose "Anthropic", paste key
+node bin/tiangong.js
+```
+
+## Usage
+
+```bash
+# Interactive mode (REPL) — recommended, type /help for all commands
 node bin/tiangong.js
 
-# Single command
+# Single command mode
 node bin/tiangong.js "Build a login page"
 
 # Choose governance system
 node bin/tiangong.js --regime tang "Review this code for security"
 node bin/tiangong.js --regime modern "Create a market analysis"
+
+# Use specific provider/model
+node bin/tiangong.js --provider ollama --model qwen2.5-coder:7b "Write a sort function"
+
+# Dry-run (show plan without executing)
+node bin/tiangong.js --dry-run "Refactor the auth module"
+
+# Reconfigure
+node bin/tiangong.js setup
+
+# View court structure
+node bin/tiangong.js court
+
+# Global install (optional)
+npm link
+tiangong "Hello world"
+```
+
+### REPL Commands (Interactive Mode)
+
+Type these in the interactive prompt:
+
+```
+/help              — Show all commands
+/court             — View court hierarchy
+/regime tang       — Switch to Tang dynasty system
+/cost              — View token spending
+/history           — View past commands
+
+/dream             — AI predicts what you need next
+/collab "task"     — Multi-agent collaborative coding
+/oracle <error>    — Paste error log → auto fix
+/pk a1 a2 "task"   — Agent competition
+/debate "topic"    — Multi-agent court debate
+/exam agentId      — Benchmark an agent
+/rank              — XP leaderboard
+
+/auto-optimize     — Auto-optimize agent prompts
+/viking ls         — Browse OpenViking memory filesystem
+/personality       — View MBTI × Zodiac profiles
+/treasure hunt     — Play the treasure game
+
+/exit              — Exit
 ```
 
 ## Supported LLM Providers
@@ -196,24 +276,95 @@ TianGong is an **independent, original implementation**. All code is original wo
 - **MBTI × 星座性格**：每个大臣有独特性格，影响回复风格和合拍度
 - **寻宝游戏**：病毒式传播机制——宝藏收集、谜语挑战、邀请码裂变
 
-## 快速开始
+## 安装
+
+**前置条件**: [Node.js](https://nodejs.org) >= 22
 
 ```bash
+# 1. 克隆项目
 git clone https://github.com/wanikua/tiangong.git
-cd tiangong && npm install
+cd tiangong
 
-# 交互模式（推荐）
+# 2. 安装依赖
+npm install
+
+# 3. 首次运行 — 登基大典
+#    会引导你完成：
+#      选择 LLM 提供商 → 输入 API Key → 选择制度 → 选择模型
+node bin/tiangong.js
+```
+
+### 用 Ollama（免费、本地、不需要 API Key）
+
+```bash
+# 安装 Ollama: https://ollama.com
+# 拉取模型:
+ollama pull qwen2.5-coder:7b
+
+# 启动天工，选择 "Ollama" 即可
+node bin/tiangong.js
+```
+
+### 用 Anthropic Claude
+
+```bash
+# 获取 API Key: https://console.anthropic.com/settings/keys
+# 启动后选择 "Anthropic"，粘贴 Key
+node bin/tiangong.js
+```
+
+## 使用方法
+
+```bash
+# 交互模式（推荐），输入 /help 查看所有命令
 node bin/tiangong.js
 
-# 单次执行
+# 单次执行模式
 node bin/tiangong.js "帮我写一个登录页面"
 
 # 选择制度
 node bin/tiangong.js --regime tang "审查这段代码"
 node bin/tiangong.js --regime modern "做一个市场分析"
 
-# 本地模型（Ollama）
+# 指定模型
 node bin/tiangong.js --provider ollama --model qwen2.5-coder:7b "写排序算法"
+
+# 试运行（只看计划不执行）
+node bin/tiangong.js --dry-run "重构认证模块"
+
+# 重新配置
+node bin/tiangong.js setup
+
+# 全局安装（可选）
+npm link
+tiangong "你好世界"
+```
+
+### 交互模式命令
+
+在交互提示符中输入：
+
+```
+/help              帮助
+/court             查看朝廷架构
+/regime tang       切换到唐制
+/cost              查看花费
+/history           查看历史
+
+/dream             AI 预判你下一步需求
+/collab "任务"     多 Agent 协同编码
+/oracle <错误日志>  粘贴错误自动修复
+/pk a1 a2 "题目"   Agent 对决
+/debate "议题"     廷议辩论
+/exam bingbu       科举考试
+/rank              功勋排行榜
+
+/auto-optimize     自动优化 Agent Prompt
+/viking ls         浏览 OpenViking 记忆
+/personality       查看 MBTI 性格档案
+/treasure hunt     寻宝游戏
+
+/exit              退朝
 ```
 
 ## 18 个独创功能
