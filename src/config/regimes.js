@@ -65,9 +65,9 @@ const TANG_REGIME = {
   agents: [
     { id: 'zhongshu_ling', name: '中书令', emoji: '📝', role: '起草方案 + 分析需求', layer: 'planning', canCall: ['menxia_shilang'] },
     { id: 'zhongshu_sheren', name: '中书舍人', emoji: '🖊️', role: 'Prompt 优化', layer: 'planning', canCall: [] },
-    { id: 'menxia_shilang', name: '门下侍郎', emoji: '🛡️', role: '审核方案 + 权限检查', layer: 'review', canCall: ['shangshu_ling'] },
+    { id: 'menxia_shilang', name: '门下侍郎', emoji: '🛡️', role: '审核方案 + 权限检查', layer: 'review', canCall: ['shangshu_ling', 'jishizhong'] },
     { id: 'jishizhong', name: '给事中', emoji: '⚡', role: '封驳权 — 驳回不合理方案', layer: 'review', canCall: ['zhongshu_ling'] },
-    { id: 'shangshu_ling', name: '尚书令', emoji: '🏗️', role: '调度六部执行', layer: 'execution', canCall: ['*_bu'] },
+    { id: 'shangshu_ling', name: '尚书令', emoji: '🏗️', role: '调度六部执行', layer: 'execution', canCall: ['*_bu', 'jishizhong'] },
     { id: 'li_bu', name: '吏部', emoji: '📋', role: '项目管理', layer: 'execution', canCall: [] },
     { id: 'hu_bu', name: '户部', emoji: '💰', role: '资源管理', layer: 'execution', canCall: [] },
     { id: 'bing_bu', name: '兵部', emoji: '⚔️', role: '编码开发', layer: 'execution', canCall: [] },

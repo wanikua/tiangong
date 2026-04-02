@@ -39,7 +39,12 @@ class PermissionGate {
 
     const allowed = caller.canCall.includes('*')
       || caller.canCall.includes(targetId)
-      || caller.canCall.some(p => p.endsWith('*') && targetId.startsWith(p.slice(0, -1)));
+      || caller.canCall.some(p => {
+        if (!p.includes('*')) return false;
+        // 将通配符模式转为正则: *_bu → .*_bu, hanlin_* → hanlin_.*
+        const regex = new RegExp('^' + p.replace(/\*/g, '.*') + '$');
+        return regex.test(targetId);
+      });
 
     this._audit(callerId, ActionType.AGENT_CALL, { target: targetId }, allowed);
 

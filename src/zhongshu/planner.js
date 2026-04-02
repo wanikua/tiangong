@@ -85,43 +85,91 @@ function generatePlan(prompt, regimeId = 'ming') {
   const steps = [];
   let stepId = 1;
 
-  // Step 1: 中书省 / 内阁 / CEO 优化 prompt
+  // ── Step 1: 决策层（中书省/内阁/CEO）分析需求 ──
   const plannerAgent = regime.agents.find(a => a.layer === 'planning' && a.canCall.length > 0);
+  const plannerId = plannerAgent ? plannerAgent.id : regime.agents[0].id;
   steps.push({
     id: stepId++,
-    agent: plannerAgent ? plannerAgent.id : regime.agents[0].id,
+    agent: plannerId,
     task: 'optimize_prompt',
     description: '分析需求 + 优化 Prompt + 生成详细方案',
     input: prompt
   });
 
-  // Step 2+: 六部执行
-  const assignedAgents = new Set();
-  for (const taskType of taskTypes) {
-    const agentId = agentMap[taskType];
-    if (agentId && !assignedAgents.has(agentId)) {
-      assignedAgents.add(agentId);
-      const agent = regime.agents.find(a => a.id === agentId);
+  // ── 唐制特色：中书令 → 门下侍郎（审核） → 尚书令（调度） ──
+  // 唐制流程必须经过门下省审核，再由尚书令调度六部
+  let executionDependency = 1; // 六部执行依赖的步骤 ID
+
+  if (regimeId === 'tang') {
+    // Step 2: 门下侍郎审核方案
+    const menxia = regime.agents.find(a => a.id === 'menxia_shilang');
+    if (menxia) {
       steps.push({
         id: stepId++,
-        agent: agentId,
-        task: taskType,
-        description: agent ? `${agent.name}执行: ${taskType}` : taskType,
-        dependencies: [1] // 依赖 prompt 优化步骤
+        agent: 'menxia_shilang',
+        task: 'review_plan',
+        description: '门下侍郎审核方案',
+        dependencies: [1]
       });
+    }
+
+    // Step 3: 尚书令调度六部
+    const shangshu = regime.agents.find(a => a.id === 'shangshu_ling');
+    if (shangshu) {
+      const shangshuStepId = stepId++;
+      steps.push({
+        id: shangshuStepId,
+        agent: 'shangshu_ling',
+        task: 'dispatch',
+        description: '尚书令调度六部执行',
+        dependencies: [stepId - 2] // 依赖门下侍郎审核
+      });
+      executionDependency = shangshuStepId;
     }
   }
 
-  // 最后: 都察院 / 门下省审查（如果有编码类任务）
+  // ── 六部执行 ──
+  const assignedAgents = new Set();
+  const executionStepIds = [];
+  for (const taskType of taskTypes) {
+    const agentId = agentMap[taskType];
+    if (agentId && !assignedAgents.has(agentId)) {
+      // 唐制：跳过已在流程中的 Agent（门下侍郎、尚书令）
+      if (regimeId === 'tang' && (agentId === 'menxia_shilang' || agentId === 'shangshu_ling')) {
+        continue;
+      }
+      assignedAgents.add(agentId);
+      const agent = regime.agents.find(a => a.id === agentId);
+      const sid = stepId++;
+      steps.push({
+        id: sid,
+        agent: agentId,
+        task: taskType,
+        description: agent ? `${agent.name}执行${taskType}任务` : taskType,
+        dependencies: [executionDependency]
+      });
+      executionStepIds.push(sid);
+    }
+  }
+
+  // ── 审查步骤 ──
   if (taskTypes.includes('coding') || taskTypes.includes('devops')) {
-    const reviewer = regime.agents.find(a => a.layer === 'review');
-    if (reviewer) {
+    // 找审查 Agent（唐制用给事中，明制用都察院，现代制无独立审查）
+    let reviewAgent;
+    if (regimeId === 'tang') {
+      // 唐制：给事中做最终审查（门下侍郎已在流程中审核过方案）
+      reviewAgent = regime.agents.find(a => a.id === 'jishizhong');
+    } else {
+      reviewAgent = regime.agents.find(a => a.layer === 'review');
+    }
+
+    if (reviewAgent && executionStepIds.length > 0) {
       steps.push({
         id: stepId++,
-        agent: reviewer.id,
+        agent: reviewAgent.id,
         task: 'review',
-        description: `${reviewer.name}审查`,
-        dependencies: steps.filter(s => s.task !== 'optimize_prompt').map(s => s.id)
+        description: `${reviewAgent.name}审查`,
+        dependencies: executionStepIds
       });
     }
   }

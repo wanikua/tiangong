@@ -90,16 +90,52 @@ async function startSession(prompt, options = {}) {
   reviewSpinner.start(`${L.review.icon} ${L.review.name}${L.review.verb}中...`);
 
   const gate = new PermissionGate(regimeId);
+  let permissionOk = true;
+
+  // 权限检查逻辑：
+  // 每一步的"调用者"取决于制度流程，不是简单的前一步。
+  // 规则：谁有权调度谁？按 canCall 链路检查。
+  // 特殊：审查步骤（review）是调度系统发起的，不是被审查的 Agent 发起的。
+  const dispatchAgent = plan.steps[0].agent; // 调度者
 
   for (let i = 1; i < plan.steps.length; i++) {
     const step = plan.steps[i];
-    const caller = plan.steps[0].agent;
-    const check = gate.checkAgentCall(caller, step.agent);
+
+    // 确定 caller：谁调度了这一步？
+    let callerId;
+    if (step.task === 'review' || step.task === 'review_plan') {
+      // 审查步骤：找流程中有权调度审查者的 Agent
+      // 优先用调度者，其次用依赖步骤中的 Agent
+      callerId = dispatchAgent;
+      // 如果调度者无权，依次尝试之前步骤中的 Agent
+      if (!gate.checkAgentCall(callerId, step.agent).allowed) {
+        for (let j = i - 1; j >= 0; j--) {
+          if (gate.checkAgentCall(plan.steps[j].agent, step.agent).allowed) {
+            callerId = plan.steps[j].agent;
+            break;
+          }
+        }
+      }
+    } else if (step.dependencies && step.dependencies.length > 0) {
+      const depStep = plan.steps.find(s => s.id === step.dependencies[0]);
+      callerId = depStep ? depStep.agent : plan.steps[i - 1].agent;
+    } else {
+      callerId = plan.steps[i - 1].agent;
+    }
+
+    const check = gate.checkAgentCall(callerId, step.agent);
     if (!check.allowed) {
-      reviewSpinner.fail(`${L.reject}: ${check.reason}`);
-      return;
+      // 降级：如果 caller 无权调度，尝试用全局调度者（司礼监/CEO）
+      const fallback = gate.checkAgentCall(dispatchAgent, step.agent);
+      if (!fallback.allowed) {
+        reviewSpinner.fail(`${L.reject}: ${check.reason}`);
+        permissionOk = false;
+        break;
+      }
     }
   }
+
+  if (!permissionOk) return;
   reviewSpinner.succeed(`${L.approve}`);
 
   // ── 执行层 ──
