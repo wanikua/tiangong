@@ -7,6 +7,31 @@
 const { getRegime } = require('../config/regimes');
 
 /**
+ * 简单问答识别 — 这些不需要走完整的多 Agent 流程
+ */
+const CHAT_PATTERNS = [
+  /^.{0,5}(是什么|什么是|干什么|干嘛|怎么用|怎么样|好不好|对不对|有没有|能不能|可以吗|吗？|吗$)/,
+  /^(你好|hello|hi|hey|嗨|哈喽|请问|问一下|告诉我|解释|介绍|说说|聊聊|谈谈)/i,
+  /^(为什么|怎么回事|什么意思|如何理解|区别|不同|对比|比较|优缺点)/,
+  /^(推荐|建议|哪个好|选哪个|应该用)/,
+  /(谢谢|感谢|辛苦了|不错|很好|好的|收到|明白|懂了|了解)$/,
+  /^.{0,30}[？?]$/,  // 短问句（30字以内+问号结尾）
+];
+
+/**
+ * 判断是否是简单对话（不需要工具和多 Agent 协作）
+ * @param {string} prompt
+ * @returns {boolean}
+ */
+function isSimpleChat(prompt) {
+  // 短文本（<15字）且没有明确任务关键词 → 大概率是闲聊
+  if (prompt.length < 15 && !Object.values(TASK_PATTERNS).some(p => p.test(prompt))) {
+    return true;
+  }
+  return CHAT_PATTERNS.some(p => p.test(prompt));
+}
+
+/**
  * 任务类型识别
  */
 const TASK_PATTERNS = {
@@ -79,6 +104,25 @@ function analyzeIntent(prompt) {
  */
 function generatePlan(prompt, regimeId = 'ming') {
   const regime = getRegime(regimeId);
+
+  // ── 简单问答：单 Agent 直答，不走完整流程 ──
+  if (isSimpleChat(prompt)) {
+    const plannerAgent = regime.agents.find(a => a.layer === 'planning' && a.canCall.length > 0);
+    return {
+      prompt,
+      regime: regimeId,
+      taskTypes: ['chat'],
+      steps: [{
+        id: 1,
+        agent: plannerAgent ? plannerAgent.id : regime.agents[0].id,
+        task: 'chat',
+        description: '直接回答',
+        input: prompt
+      }],
+      createdAt: new Date().toISOString()
+    };
+  }
+
   const taskTypes = analyzeIntent(prompt);
   const agentMap = TASK_AGENT_MAP[regimeId] || TASK_AGENT_MAP.ming;
 
@@ -186,6 +230,7 @@ function generatePlan(prompt, regimeId = 'ming') {
 module.exports = {
   analyzeIntent,
   generatePlan,
+  isSimpleChat,
   TASK_PATTERNS,
   TASK_AGENT_MAP
 };
