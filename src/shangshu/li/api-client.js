@@ -3,6 +3,12 @@
  *
  * 统一封装 Anthropic / OpenRouter / OpenAI / DeepSeek 调用
  * 所有 Provider 走 OpenAI 兼容接口（Anthropic 原生接口单独处理）
+ *
+ * 🧠 UncommonRoute 智能融合:
+ *    自动检测本地 UncommonRoute 代理 (localhost:8403)，
+ *    检测到后透明劫持 baseUrl，让所有请求走智能路由。
+ *    无需用户手动配置，装了就用，没装不影响。
+ *    参考: https://github.com/CommonstackAI/UncommonRoute
  */
 
 const https = require('https');
@@ -10,6 +16,43 @@ const http = require('http');
 const { URL } = require('url');
 const { loadConfig } = require('../../config/setup');
 const { getProvider, getApiKey } = require('../../config/providers');
+
+// ── UncommonRoute 自动检测 ──────────────────────────────
+const UNCOMMON_ROUTE_URL = 'http://localhost:8403';
+let _uncommonRouteStatus = null; // null=未检测, true=可用, false=不可用
+
+/**
+ * 探测 UncommonRoute 是否在跑（只探一次，缓存结果）
+ * @returns {Promise<boolean>}
+ */
+async function probeUncommonRoute() {
+  if (_uncommonRouteStatus !== null) return _uncommonRouteStatus;
+
+  // 环境变量强制关闭
+  if (process.env.TIANGONG_NO_UNCOMMON_ROUTE === '1') {
+    _uncommonRouteStatus = false;
+    return false;
+  }
+
+  return new Promise(resolve => {
+    const req = http.get(`${UNCOMMON_ROUTE_URL}/health`, { timeout: 800 }, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        _uncommonRouteStatus = res.statusCode === 200;
+        resolve(_uncommonRouteStatus);
+      });
+    });
+    req.on('error', () => { _uncommonRouteStatus = false; resolve(false); });
+    req.on('timeout', () => { req.destroy(); _uncommonRouteStatus = false; resolve(false); });
+  });
+}
+
+/** 重置探测缓存（用于测试或 UncommonRoute 启停后刷新） */
+function resetUncommonRouteProbe() { _uncommonRouteStatus = null; }
+
+/** 查看当前 UncommonRoute 状态 */
+function isUncommonRouteActive() { return _uncommonRouteStatus === true; }
 
 /**
  * 调用 LLM API
@@ -20,6 +63,7 @@ const { getProvider, getApiKey } = require('../../config/providers');
  * @param {Array} [params.tools] - 工具定义
  * @param {number} [params.maxTokens=4096]
  * @param {string} [params.providerId] - 指定 Provider
+ * @param {object} [params._tiangong] - 天工内部上下文（传给 UncommonRoute 的元信息）
  * @returns {Promise<{ content: string, toolCalls: Array, usage: object, stopReason: string }>}
  */
 async function callLLM(params) {
@@ -39,12 +83,45 @@ async function callLLM(params) {
   }
 
   const model = params.model || config.model || provider.defaultModel;
-  const baseUrl = config.baseUrl || provider.baseUrl;
+  // baseUrl: CLI 指定了不同 provider 时，用该 provider 自带的 baseUrl，
+  // 不要用 config 里存的（那是 setup 时的 provider 的 baseUrl）
+  const configProviderMatch = providerId === config.provider;
+  let baseUrl = (configProviderMatch ? config.baseUrl : null) || provider.baseUrl;
+
+  // ── UncommonRoute 智能路由融合 ──
+  //
+  // UncommonRoute (github.com/CommonstackAI/UncommonRoute) 是本地 LLM 代理，
+  // 用 ML 分类器按 prompt 难度自动选最划算的模型。
+  //
+  // 融合模式（按 baseUrl 自动判断，无需特殊配置）：
+  //
+  //   A) 用户 setup 时把 baseUrl 配成 localhost:8403
+  //      → 天工发请求到 UncommonRoute → 它选模型 → 转发给它的 upstream
+  //      → 用户需自行配好 UncommonRoute 的 upstream 和 API key
+  //      → 适合: 想要 UncommonRoute 完全托管模型选择
+  //
+  //   B) 用户正常配 provider (Anthropic/OpenAI/Qwen 等)
+  //      + 同时跑着 UncommonRoute + 设 ANTHROPIC_BASE_URL=localhost:8403
+  //      → 天工用用户的 provider 配置 → 请求走 UncommonRoute 代理
+  //      → 这是 UncommonRoute 官方推荐的用法
+  //      → 适合: 不想改天工配置，只在环境变量层做代理
+  //
+  //   C) 用户正常配 provider，没装 UncommonRoute
+  //      → 天工直连 provider，完全不受影响
+  //
+  // 天工额外做的事：通过 x-tiangong-* headers 把自己的路由上下文传给 UncommonRoute，
+  // 帮它做更精准的路由决策（任务类型、agent 身份、是否简单对话）。
+  //
+  const tiangongMeta = params._tiangong || {};
+
+  // 自动探测 UncommonRoute（非阻塞，仅用于在 REPL 显示状态提示）
+  // 实际路由完全靠用户配的 baseUrl，不做隐式劫持
+  probeUncommonRoute().catch(() => {});
 
   if (providerId === 'anthropic') {
-    return callAnthropic({ ...params, model, apiKey, baseUrl });
+    return callAnthropic({ ...params, model, apiKey, baseUrl, tiangongMeta });
   } else {
-    return callOpenAICompatible({ ...params, model, apiKey, baseUrl, providerId });
+    return callOpenAICompatible({ ...params, model, apiKey, baseUrl, providerId, tiangongMeta });
   }
 }
 
@@ -62,11 +139,22 @@ async function callAnthropic(params) {
   if (params.system) body.system = params.system;
   if (params.tools && params.tools.length > 0) body.tools = params.tools;
 
-  const response = await httpPost(`${params.baseUrl}/v1/messages`, body, {
+  const headers = {
     'x-api-key': params.apiKey,
     'anthropic-version': '2023-06-01',
     'content-type': 'application/json'
-  });
+  };
+
+  // 天工元信息 → UncommonRoute 可据此微调路由决策
+  if (params.tiangongMeta) {
+    const m = params.tiangongMeta;
+    if (m.taskType) headers['x-tiangong-task'] = m.taskType;      // chat / coding / review ...
+    if (m.agentId)  headers['x-tiangong-agent'] = m.agentId;      // silijian / bingbu ...
+    if (m.layer)    headers['x-tiangong-layer'] = m.layer;         // planning / execution / review
+    if (m.isSimple) headers['x-tiangong-simple'] = '1';            // 简单对话标记
+  }
+
+  const response = await httpPost(`${params.baseUrl}/v1/messages`, body, headers);
 
   // 解析响应
   const textBlocks = (response.content || []).filter(b => b.type === 'text');
@@ -126,6 +214,15 @@ async function callOpenAICompatible(params) {
   if (params.providerId === 'openrouter') {
     headers['http-referer'] = 'https://github.com/wanikua/tiangong';
     headers['x-title'] = 'tiangong';
+  }
+
+  // 天工元信息 → UncommonRoute 可据此微调路由决策
+  if (params.tiangongMeta) {
+    const m = params.tiangongMeta;
+    if (m.taskType) headers['x-tiangong-task'] = m.taskType;
+    if (m.agentId)  headers['x-tiangong-agent'] = m.agentId;
+    if (m.layer)    headers['x-tiangong-layer'] = m.layer;
+    if (m.isSimple) headers['x-tiangong-simple'] = '1';
   }
 
   const response = await httpPost(`${params.baseUrl}/chat/completions`, body, headers);
@@ -237,4 +334,4 @@ function safeJsonParse(str) {
   try { return JSON.parse(str); } catch { return {}; }
 }
 
-module.exports = { callLLM };
+module.exports = { callLLM, probeUncommonRoute, resetUncommonRouteProbe, isUncommonRouteActive };

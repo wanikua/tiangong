@@ -137,7 +137,12 @@ class Dispatcher {
         system: systemPrompt,
         messages,
         tools,
-        maxTokens: 4096
+        maxTokens: 4096,
+        _tiangong: {
+          taskType: step.task,
+          agentId: agentId,
+          layer: step.task === 'chat' ? 'planning' : undefined
+        }
       });
 
       // 记录用量

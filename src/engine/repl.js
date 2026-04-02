@@ -62,6 +62,27 @@ async function startRepl(options) {
 
   console.log(makeBanner(currentRegime));
 
+  // ── UncommonRoute 状态检测 ──
+  try {
+    const { probeUncommonRoute } = require('../shangshu/li/api-client');
+    const hasUR = await probeUncommonRoute();
+    if (hasUR) {
+      // 检查用户的 baseUrl 是否指向 UncommonRoute
+      const config = require('../config/setup').loadConfig() || {};
+      const baseUrl = config.baseUrl || '';
+      const isRouted = baseUrl.includes('localhost:8403') || baseUrl.includes('127.0.0.1:8403');
+
+      if (isRouted) {
+        console.log(chalk.green('  🧠 UncommonRoute 已启用 — 按 prompt 难度自动选模型'));
+      } else {
+        console.log(chalk.gray('  🧠 检测到 UncommonRoute (localhost:8403)，但未启用'));
+        console.log(chalk.gray('     启用方式: tiangong setup 时 baseUrl 填 http://localhost:8403'));
+        console.log(chalk.gray('     或设环境变量: ANTHROPIC_BASE_URL=http://localhost:8403'));
+      }
+      console.log();
+    }
+  } catch { /* ignore */ }
+
   // ── 新手引导（符合制度人设） ──
   if (isFirstSession) {
     if (currentRegime === 'modern') {

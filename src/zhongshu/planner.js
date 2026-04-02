@@ -2,33 +2,40 @@
  * 中书省 — 起草执行计划
  *
  * 分析用户意图，生成结构化的执行计划，分配给对应的六部
+ *
+ * 天工双层路由架构:
+ *   L1 (本模块) — 流程路由: 简单对话走快速直答，任务型走多 Agent 流程
+ *   L2 (UncommonRoute) — 模型路由: 按 prompt 难度自动选最划算的模型
+ *   参考: https://github.com/CommonstackAI/UncommonRoute
  */
 
 const { getRegime } = require('../config/regimes');
 
 /**
- * 简单问答识别 — 这些不需要走完整的多 Agent 流程
- */
-const CHAT_PATTERNS = [
-  /^.{0,5}(是什么|什么是|干什么|干嘛|怎么用|怎么样|好不好|对不对|有没有|能不能|可以吗|吗？|吗$)/,
-  /^(你好|hello|hi|hey|嗨|哈喽|请问|问一下|告诉我|解释|介绍|说说|聊聊|谈谈)/i,
-  /^(为什么|怎么回事|什么意思|如何理解|区别|不同|对比|比较|优缺点)/,
-  /^(推荐|建议|哪个好|选哪个|应该用)/,
-  /(谢谢|感谢|辛苦了|不错|很好|好的|收到|明白|懂了|了解)$/,
-  /^.{0,30}[？?]$/,  // 短问句（30字以内+问号结尾）
-];
-
-/**
  * 判断是否是简单对话（不需要工具和多 Agent 协作）
+ *
+ * 核心思路：反向判断 —— 只有明确命中「任务动词 + 具体对象」才走完整流程，
+ * 其他一律当作简单对话快速直答。这比穷举问句模式聪明得多。
+ *
  * @param {string} prompt
  * @returns {boolean}
  */
 function isSimpleChat(prompt) {
-  // 短文本（<15字）且没有明确任务关键词 → 大概率是闲聊
-  if (prompt.length < 15 && !Object.values(TASK_PATTERNS).some(p => p.test(prompt))) {
+  const trimmed = prompt.trim();
+
+  // 1. 短文本（≤50字）且没有命中任何任务模式 → 简单对话
+  if (trimmed.length <= 50 && !Object.values(TASK_PATTERNS).some(p => p.test(trimmed))) {
     return true;
   }
-  return CHAT_PATTERNS.some(p => p.test(prompt));
+
+  // 2. 即使命中了任务关键词，如果整体是「问句」而非「指令」，仍当简单对话
+  //    指令特征：「帮我写…」「实现…」「创建…」「部署…」「修复…」等祈使句
+  const IMPERATIVE = /^(帮|请|麻烦|给我|替我|为我|需要你|你来|你去|开始|立刻|马上)?.{0,4}(写|编|实现|开发|创建|重构|修复|部署|发布|搭建|生成|做|改|删|加|添加|移除|执行|运行|启动|构建|设计|优化|迁移|升级|配置|安装|测试)/;
+  if (!IMPERATIVE.test(trimmed)) {
+    return true;
+  }
+
+  return false;
 }
 
 /**
