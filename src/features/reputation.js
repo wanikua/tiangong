@@ -77,6 +77,28 @@ class ReputationManager {
       fs.mkdirSync(REPUTATION_DIR, { recursive: true });
     }
     this.data = this._load();
+    this._cleanupInvalidIds();
+  }
+
+  /**
+   * 校验 agent ID 是否合法（只允许英文、数字、下划线、连字符）
+   */
+  _isValidAgentId(id) {
+    return typeof id === 'string' && id.length >= 2 && /^[a-zA-Z][a-zA-Z0-9_-]*$/.test(id);
+  }
+
+  /**
+   * 清理非法 ID 条目（如中文名、截断字符等）
+   */
+  _cleanupInvalidIds() {
+    let changed = false;
+    for (const key of Object.keys(this.data)) {
+      if (!this._isValidAgentId(key)) {
+        delete this.data[key];
+        changed = true;
+      }
+    }
+    if (changed) this._save();
   }
 
   /**
@@ -85,6 +107,10 @@ class ReputationManager {
    * @returns {object}
    */
   getAgent(agentId) {
+    // 拒绝非法 ID 写入
+    if (!this._isValidAgentId(agentId)) {
+      return { xp: 0, totalTasks: 0, successTasks: 0, failedTasks: 0, streak: 0, bestStreak: 0, toolsUsed: [], achievements: [], history: [] };
+    }
     if (!this.data[agentId]) {
       this.data[agentId] = {
         xp: 0,

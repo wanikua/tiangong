@@ -4,7 +4,7 @@
 
 > Created by **菠萝菠菠** 🍍
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: BSL 1.1](https://img.shields.io/badge/License-BSL_1.1-red.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/Node.js-≥22-green.svg)](https://nodejs.org)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
@@ -253,7 +253,7 @@ tiangong/
 
 ## Acknowledgements & References
 
-TianGong is an **independent, original implementation**. All code is original work under the MIT License. The following projects provided architectural inspiration:
+TianGong is an **independent, original implementation**. All code is original work under the BSL 1.1 License. The following projects provided architectural inspiration:
 
 - **[当皇上 (danghuangshang)](https://github.com/wanikua/danghuangshang)** — AI imperial court tutorial + OpenClaw implementation. TianGong's regime system and agent hierarchy concepts originated here.
 - **[Claude Code Architecture](https://github.com/wanikua/Claude-code-leaks)** — Anthropic's CLI tool architecture study. Inspired our tool system design (Bash/FileRead/FileEdit/Glob/Grep), permission model, and agent loop pattern.
@@ -420,7 +420,7 @@ tiangong "你好世界"
 
 ## License
 
-MIT
+BSL 1.1 (Business Source License) — 非商用免费，商用需授权。2030-04-02 后自动转为 Apache 2.0。
 
 ---
 
@@ -434,6 +434,6 @@ MIT
 |:---:|:---:|:---:|
 | [![小红书](https://raw.githubusercontent.com/wanikua/danghuangshang/main/images/avatar-xiaohongshu.png)](https://www.xiaohongshu.com/user/profile/5a169df34eacab2bc9a7a22d) | ![公众号](https://raw.githubusercontent.com/wanikua/danghuangshang/main/images/qr-wechat-official.jpg) | ![微信群](https://raw.githubusercontent.com/wanikua/danghuangshang/main/images/qr-wechat-group.png) |
 
-v0.1.0 | MIT License | [User Agreement](https://danghuangshang.com) | [Privacy Policy](https://danghuangshang.com)
+v0.1.0 | BSL 1.1 License | [User Agreement](https://danghuangshang.com) | [Privacy Policy](https://danghuangshang.com)
 
-> 📜 Licensed under MIT. Credit: [danghuangshang](https://github.com/wanikua/danghuangshang) by [@wanikua](https://github.com/wanikua)
+> 📜 Licensed under BSL 1.1. Credit: [danghuangshang](https://github.com/wanikua/danghuangshang) by [@wanikua](https://github.com/wanikua)

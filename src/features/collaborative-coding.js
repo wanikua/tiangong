@@ -31,44 +31,87 @@ const { Spinner } = require('../engine/spinner');
 const { reputationManager } = require('./reputation');
 
 /**
- * 协同角色定义
+ * 协同角色定义 — 按制度分别命名
  */
 const COLLAB_ROLES = {
   architect: {
-    name: '架构师',
-    emoji: '🏗️',
+    name: { ming: '内阁首辅', tang: '中书令', modern: 'Architect' },
+    emoji: { ming: '🏛️', tang: '📜', modern: '🏗️' },
     prompt: '你是架构师。分析需求，设计模块结构、接口定义、数据模型。输出 API 设计和文件结构。',
     defaultAgent: { ming: 'neige', tang: 'zhongshu_ling', modern: 'cto' }
   },
   coder: {
-    name: '编码者',
-    emoji: '⚔️',
+    name: { ming: '兵部尚书', tang: '尚书左仆射', modern: 'Lead Engineer' },
+    emoji: { ming: '⚔️', tang: '🐉', modern: '💻' },
     prompt: '你是核心编码者。根据架构设计编写完整的实现代码。注重代码质量和最佳实践。',
     defaultAgent: { ming: 'bingbu', tang: 'bing_bu', modern: 'engineer' }
   },
   security: {
-    name: '安全官',
-    emoji: '🛡️',
+    name: { ming: '刑部尚书', tang: '门下侍郎', modern: 'Security Lead' },
+    emoji: { ming: '⚖️', tang: '🛡️', modern: '🔒' },
     prompt: '你是安全审计员。审查代码的安全问题：注入、XSS、权限漏洞、敏感信息泄露。给出具体修复代码。',
     defaultAgent: { ming: 'xingbu', tang: 'menxia_shilang', modern: 'cto' }
   },
   tester: {
-    name: '测试官',
-    emoji: '🧪',
+    name: { ming: '工部尚书', tang: '工部侍郎', modern: 'QA Lead' },
+    emoji: { ming: '🔨', tang: '🧪', modern: '🧪' },
     prompt: '你是测试工程师。为代码编写全面的单元测试和集成测试。覆盖正常流程和边界情况。',
     defaultAgent: { ming: 'gongbu', tang: 'gong_bu', modern: 'devops' }
   },
   reviewer: {
-    name: '审查官',
-    emoji: '🔍',
+    name: { ming: '都察院御史', tang: '给事中', modern: 'Tech Lead' },
+    emoji: { ming: '👁️', tang: '🔍', modern: '🔍' },
     prompt: '你是代码审查员。从可读性、性能、可维护性角度做 Code Review。给出具体的改进建议。',
     defaultAgent: { ming: 'duchayuan', tang: 'jishizhong', modern: 'cto' }
   },
   docs: {
-    name: '文档官',
-    emoji: '📝',
+    name: { ming: '翰林学士', tang: '中书舍人', modern: 'Tech Writer' },
+    emoji: { ming: '📝', tang: '🖊️', modern: '📝' },
     prompt: '你是技术写手。为代码编写 README、API 文档、使用示例。文档要清晰实用。',
     defaultAgent: { ming: 'hanlin', tang: 'zhongshu_sheren', modern: 'marketer' }
+  }
+};
+
+/**
+ * 获取角色的制度化名称和 emoji
+ */
+function getRoleDisplay(roleId, regimeId) {
+  const role = COLLAB_ROLES[roleId];
+  if (!role) return { name: roleId, emoji: '?' };
+  const rid = regimeId || 'ming';
+  return {
+    name: role.name[rid] || role.name.ming,
+    emoji: role.emoji[rid] || role.emoji.ming
+  };
+}
+
+/**
+ * 制度化 UI 文案
+ */
+const COLLAB_UI = {
+  ming: {
+    title: '六部联名奏折',
+    subtitle: '内阁督办 · 六部协同',
+    phaseParallel: '六部并行办差',
+    phaseResult: '联名奏折',
+    costLabel: '户部报账',
+    completionLabel: '奏折完成度'
+  },
+  tang: {
+    title: '三省会审',
+    subtitle: '中书起草 · 门下审核 · 尚书执行',
+    phaseParallel: '三省并行议事',
+    phaseResult: '三省会审结果',
+    costLabel: '度支报账',
+    completionLabel: '会审完成度'
+  },
+  modern: {
+    title: 'Team Sprint',
+    subtitle: 'Architecture + Code + Security + QA + Review',
+    phaseParallel: 'Parallel Execution',
+    phaseResult: 'Sprint Deliverables',
+    costLabel: 'Cost',
+    completionLabel: 'Completion'
   }
 };
 
@@ -85,17 +128,27 @@ async function runCollaborativeCoding(params) {
   const config = loadConfig() || {};
   const model = config.model;
   const costTracker = new CostTracker();
+  const ui = COLLAB_UI[regimeId] || COLLAB_UI.ming;
+
+  // 根据制度获取实际的 agent 列表，映射为 collab 角色
+  const regime = getRegime(regimeId);
+  const regimeAgents = regime ? regime.agents : [];
 
   // 默认角色组合
   const activeRoles = params.roles || ['architect', 'coder', 'security', 'tester', 'reviewer'];
 
   console.log();
   console.log(chalk.yellow('  ╔══════════════════════════════════════════════════════╗'));
-  console.log(chalk.yellow('  ║') + chalk.bold.yellow('    📋  六部联名奏折  📋') + chalk.gray('    Collaborative Code') + '     ' + chalk.yellow('║'));
+  console.log(chalk.yellow('  ║') + chalk.bold.yellow('    📋  ' + ui.title + '  📋') + chalk.gray('    ' + ui.subtitle) + chalk.yellow('║'));
   console.log(chalk.yellow('  ╚══════════════════════════════════════════════════════╝'));
   console.log();
-  console.log(`  ${chalk.white('任务:')} ${chalk.bold(task)}`);
-  console.log(`  ${chalk.white('参与:')} ${activeRoles.map(r => `${COLLAB_ROLES[r].emoji} ${COLLAB_ROLES[r].name}`).join('  ')}`);
+  const taskLabel = regimeId === 'modern' ? 'Task:' : '任务:';
+  const teamLabel = regimeId === 'modern' ? 'Team:' : '参与:';
+  console.log('  ' + chalk.white(taskLabel) + ' ' + chalk.bold(task));
+  console.log('  ' + chalk.white(teamLabel) + ' ' + activeRoles.map(r => {
+    const d = getRoleDisplay(r, regimeId);
+    return d.emoji + ' ' + d.name;
+  }).join('  '));
   console.log();
 
   const outputs = {};
@@ -104,8 +157,9 @@ async function runCollaborativeCoding(params) {
   let architectureOutput = '';
   if (activeRoles.includes('architect')) {
     const role = COLLAB_ROLES.architect;
+    const display = getRoleDisplay('architect', regimeId);
     const spinner = new Spinner({ color: 'yellow' });
-    spinner.start(`${role.emoji} ${role.name}正在设计架构...`);
+    spinner.start(display.emoji + ' ' + display.name + (regimeId === 'modern' ? ' designing...' : '正在设计架构...'));
 
     try {
       const agentId = role.defaultAgent[regimeId] || 'neige';
@@ -119,10 +173,10 @@ async function runCollaborativeCoding(params) {
       costTracker.record(agentId, model || 'claude-sonnet-4-6',
         response.usage?.input_tokens || 0, response.usage?.output_tokens || 0);
 
-      spinner.succeed(`${role.emoji} 架构设计完成`);
+      spinner.succeed(display.emoji + ' ' + display.name + (regimeId === 'modern' ? ' done' : '完成'));
       outputs.architect = architectureOutput;
     } catch (err) {
-      spinner.fail(`架构设计失败: ${err.message}`);
+      spinner.fail(display.name + (regimeId === 'modern' ? ' failed: ' : '失败: ') + err.message);
     }
   }
 
@@ -130,14 +184,14 @@ async function runCollaborativeCoding(params) {
   // 每个角色都能看到架构师的输出（如果有）
   const parallelRoles = activeRoles.filter(r => r !== 'architect');
 
-  console.log(chalk.yellow(`\n  ═══ 并行执行阶段 ═══════════════════════════\n`));
+  console.log(chalk.yellow('\n  === ' + ui.phaseParallel + ' ===========================\n'));
 
-  // 模拟"并行"（实际逐个执行，但 UI 上呈现并行感）
   for (const roleId of parallelRoles) {
     const role = COLLAB_ROLES[roleId];
+    const display = getRoleDisplay(roleId, regimeId);
     const agentId = role.defaultAgent[regimeId] || 'bingbu';
     const spinner = new Spinner({ color: 'cyan' });
-    spinner.start(`${role.emoji} ${role.name}工作中...`);
+    spinner.start(display.emoji + ' ' + display.name + (regimeId === 'modern' ? ' working...' : '办差中...'));
 
     try {
       const context = architectureOutput
@@ -164,38 +218,39 @@ async function runCollaborativeCoding(params) {
       costTracker.record(agentId, model || 'claude-sonnet-4-6',
         response.usage?.input_tokens || 0, response.usage?.output_tokens || 0);
 
-      spinner.succeed(`${role.emoji} ${role.name}完成`);
+      spinner.succeed(display.emoji + ' ' + display.name + (regimeId === 'modern' ? ' done' : '完成'));
       outputs[roleId] = output;
 
       // 功勋
       reputationManager.reward(agentId, 'task_complete');
 
     } catch (err) {
-      spinner.fail(`${role.name}失败: ${err.message}`);
+      spinner.fail(display.name + (regimeId === 'modern' ? ' failed: ' : '失败: ') + err.message);
       outputs[roleId] = null;
     }
   }
 
   // ── 展示合并结果 ──
-  console.log(chalk.yellow(`\n  ═══ 联名奏折 ═══════════════════════════════\n`));
+  console.log(chalk.yellow('\n  === ' + ui.phaseResult + ' ===========================\n'));
 
   const roleDisplayOrder = ['architect', 'coder', 'security', 'tester', 'reviewer', 'docs'];
 
   for (const roleId of roleDisplayOrder) {
     if (!outputs[roleId]) continue;
 
-    const role = COLLAB_ROLES[roleId];
-    console.log(chalk.gray(`  ┌─ ${role.emoji} ${role.name} ${'─'.repeat(35)}`));
+    const display = getRoleDisplay(roleId, regimeId);
+    console.log(chalk.gray('  +- ' + display.emoji + ' ' + display.name + ' ' + '-'.repeat(Math.max(1, 35 - display.name.length))));
 
     const lines = outputs[roleId].split('\n');
-    const displayLines = lines.slice(0, 40); // 最多显示40行
+    const displayLines = lines.slice(0, 40);
     for (const line of displayLines) {
-      console.log(chalk.gray('  │ ') + chalk.white(line));
+      console.log(chalk.gray('  | ') + chalk.white(line));
     }
     if (lines.length > 40) {
-      console.log(chalk.gray(`  │ ... (还有 ${lines.length - 40} 行)`));
+      const moreText = regimeId === 'modern' ? ' more lines' : ' 行未显示';
+      console.log(chalk.gray('  | ... (' + (lines.length - 40) + moreText + ')'));
     }
-    console.log(chalk.gray('  └' + '─'.repeat(48)));
+    console.log(chalk.gray('  +' + '-'.repeat(48)));
     console.log();
   }
 
@@ -203,15 +258,16 @@ async function runCollaborativeCoding(params) {
   const completedRoles = Object.entries(outputs).filter(([_, v]) => v !== null).length;
   const totalRoles = activeRoles.length;
 
-  console.log(chalk.bold('  📊 协同完成度:'));
+  console.log(chalk.bold('  ' + ui.completionLabel + ':'));
   const pct = completedRoles / totalRoles;
   const barLen = 25;
   const filled = Math.round(barLen * pct);
   const barColor = pct === 1 ? chalk.green : pct >= 0.8 ? chalk.yellow : chalk.red;
-  console.log(`    ${barColor('█'.repeat(filled))}${chalk.gray('░'.repeat(barLen - filled))} ${completedRoles}/${totalRoles} 角色完成 (${Math.round(pct * 100)}%)`);
+  const doneText = regimeId === 'modern' ? ' roles done' : ' 角色完成';
+  console.log('    ' + barColor('#'.repeat(filled)) + chalk.gray('.'.repeat(barLen - filled)) + ' ' + completedRoles + '/' + totalRoles + doneText + ' (' + Math.round(pct * 100) + '%)');
 
   const cost = costTracker.getSummary();
-  console.log(chalk.gray(`\n  💰 协同费用: $${cost.total.totalCostUsd.toFixed(4)}`));
+  console.log(chalk.gray('\n  ' + ui.costLabel + ': $' + cost.total.totalCostUsd.toFixed(4)));
   console.log();
 
   return { task, outputs, completedRoles, totalRoles, cost };

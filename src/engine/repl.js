@@ -616,9 +616,19 @@ async function startRepl(options) {
       const args = input.replace(/^\/(collab|协同)\s*/, '').trim();
 
       if (!args) {
-        console.log(chalk.yellow('\n  用法: /collab "任务描述"'));
-        console.log(chalk.gray('  示例: /collab "写一个用户认证模块"'));
-        console.log(chalk.gray('  六部同时协作：架构设计 + 编码 + 安全审计 + 测试 + Code Review\n'));
+        if (currentRegime === 'modern') {
+          console.log(chalk.yellow('\n  Usage: /collab "task description"'));
+          console.log(chalk.gray('  Example: /collab "Build a user auth module"'));
+          console.log(chalk.gray('  Team Sprint: Architecture + Code + Security + QA + Review\n'));
+        } else if (currentRegime === 'tang') {
+          console.log(chalk.yellow('\n  用法: /collab "任务描述"'));
+          console.log(chalk.gray('  示例: /collab "写一个用户认证模块"'));
+          console.log(chalk.gray('  三省会审：中书起草 + 门下审核 + 尚书执行\n'));
+        } else {
+          console.log(chalk.yellow('\n  用法: /collab "任务描述"'));
+          console.log(chalk.gray('  示例: /collab "写一个用户认证模块"'));
+          console.log(chalk.gray('  六部联名：内阁督办 + 六部协同办差\n'));
+        }
         rl.prompt();
         return;
       }
@@ -1042,7 +1052,7 @@ function routeNaturalLanguage(input) {
   }
 
   // 帮助 / 不会用
-  if (/^(?:帮助|help|怎么用|有什么功能|能干什么|不会用|不会|不知道怎么用|怎么操作|教我|指南|tutorial|how to use)$/i.test(input)) {
+  if (/^(?:帮助|help|怎么用|有什么功能|能干什么|不会用|不会|不知道怎么用|怎么操作|教我|指南|tutorial|how to use|你能做什么|你会什么|有哪些命令|什么命令|有啥功能|show commands|commands)$/i.test(input)) {
     return '/help';
   }
 

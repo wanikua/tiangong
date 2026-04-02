@@ -68,14 +68,17 @@ program
 program
   .command('court')
   .description('显示当前朝廷架构')
-  .option('-r, --regime <type>', '制度', 'ming')
-  .action((options) => {
-    const regime = getRegime(options.regime);
-    console.log(chalk.bold(`\n${regime.name} 架构：\n`));
-    console.log(regime.diagram);
+  .argument('[regime]', '制度: ming | tang | modern')
+  .action((regime) => {
+    // 优先用参数，其次用父命令的 --regime，最后用配置文件，兜底 ming
+    const savedConfig = loadConfig() || {};
+    const regimeId = regime || program.opts().regime || savedConfig.regime || 'ming';
+    const r = getRegime(regimeId);
+    console.log(chalk.bold('\n' + r.name + ' 架构：\n'));
+    console.log(r.diagram);
     console.log(chalk.bold('\n百官名册：\n'));
-    for (const agent of regime.agents) {
-      console.log(`  ${agent.emoji} ${chalk.cyan(agent.name.padEnd(8))} (${agent.id}) — ${agent.role}`);
+    for (const agent of r.agents) {
+      console.log('  ' + agent.emoji + ' ' + chalk.cyan(agent.name.padEnd(8)) + ' (' + agent.id + ') -- ' + agent.role);
     }
   });
 
@@ -85,8 +88,10 @@ program
   .description('导出训练好的朝廷班子')
   .option('-f, --format <type>', '格式: agentpark | openclaw | json', 'json')
   .option('-o, --output <path>', '输出路径')
-  .option('-r, --regime <type>', '制度', 'ming')
-  .action(async (options) => {
+  .argument('[regime]', '制度: ming | tang | modern')
+  .action(async (regime, options) => {
+    const savedConfig = loadConfig() || {};
+    options.regime = regime || program.opts().regime || savedConfig.regime || 'ming';
     const { exportCourt } = require('../src/export/exporter');
     await exportCourt(options);
   });
@@ -143,10 +148,12 @@ program
         });
         console.log(chalk.gray('\n  切换: tiangong model <模型名>'));
         console.log(chalk.gray('  示例: tiangong model ' + (provider.models[0] || 'model-name')));
+        console.log(chalk.gray('  自定义: tiangong model <任意模型名> (不限于列表)'));
       } else {
         console.log(chalk.gray('  该 provider 未预设模型列表，直接指定模型名即可'));
         console.log(chalk.gray('  示例: tiangong model my-model-name'));
       }
+      console.log(chalk.gray('  查看其他 provider 的模型: tiangong model --of <provider>'));
       console.log();
     }
   });
