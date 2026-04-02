@@ -669,25 +669,6 @@ class TreasureManager {
     return { collected: {}, bonusDropRate: 0, shared: false, githubStarred: false };
   }
 
-  /** @private */
-  _save() {
-    fs.writeFileSync(TREASURE_FILE, JSON.stringify(this.data, null, 2));
-  }
-}
-
-/**
- * 生成兑换码
- * @returns {string}
- */
-function generateRedeemCode() {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let code = 'TG-';
-  for (let i = 0; i < 8; i++) {
-    code += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return code;
-}
-
   /**
    * 显示排行榜（本地成绩）
    */
@@ -719,6 +700,24 @@ function generateRedeemCode() {
     console.log(chalk.gray(`  成就: ${score >= 500 ? '🐲 龙之传人' : score >= 200 ? '⚔️ 朝廷柱石' : score >= 50 ? '📜 初出茅庐' : '🌱 新手寻宝'}`));
     console.log();
   }
+
+  /** @private */
+  _save() {
+    fs.writeFileSync(TREASURE_FILE, JSON.stringify(this.data, null, 2));
+  }
+}
+
+/**
+ * 生成兑换码
+ * @returns {string}
+ */
+function generateRedeemCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = 'TG-';
+  for (let i = 0; i < 8; i++) {
+    code += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return code;
 }
 
 const treasureManager = new TreasureManager();
