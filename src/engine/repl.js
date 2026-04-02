@@ -230,6 +230,66 @@ async function startRepl(options) {
       return;
     }
 
+    if (input.startsWith('/model') || input.startsWith('/模型')) {
+      const parts = input.split(/\s+/);
+      if (parts.length >= 2) {
+        const newModel = parts.slice(1).join(' ');
+        options.model = newModel;
+        // 也写入配置文件
+        try {
+          const { loadConfig, CONFIG_PATH } = require('../config/setup');
+          const config = loadConfig() || {};
+          config.model = newModel;
+          require('fs').writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2), { mode: 0o600 });
+        } catch { /* ignore */ }
+        console.log(chalk.green(`\n  模型已切换: ${chalk.bold(newModel)}\n`));
+      } else {
+        const currentModel = options.model || '(默认)';
+        console.log(chalk.bold(`\n  当前模型: ${chalk.cyan(currentModel)}`));
+        console.log(chalk.gray('\n  切换示例:'));
+        console.log(chalk.gray('    /model qwen-max'));
+        console.log(chalk.gray('    /model anthropic/claude-sonnet-4.6'));
+        console.log(chalk.gray('    /model jaahas/qwen3.5-uncensored:9b'));
+        console.log(chalk.gray('    /model deepseek-chat'));
+        console.log();
+      }
+      rl.prompt();
+      return;
+    }
+
+    if (input.startsWith('/provider') || input.startsWith('/服务商')) {
+      const parts = input.split(/\s+/);
+      if (parts.length >= 2) {
+        const newProvider = parts[1];
+        const { getProvider } = require('../config/providers');
+        if (!getProvider(newProvider)) {
+          console.log(chalk.red(`\n  未知 provider: ${newProvider}`));
+          console.log(chalk.gray('  可用: anthropic, openrouter, openai, deepseek, qwen, ollama\n'));
+        } else {
+          options.provider = newProvider;
+          try {
+            const { loadConfig, CONFIG_PATH } = require('../config/setup');
+            const config = loadConfig() || {};
+            config.provider = newProvider;
+            require('fs').writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2), { mode: 0o600 });
+          } catch { /* ignore */ }
+          console.log(chalk.green(`\n  Provider 已切换: ${chalk.bold(newProvider)}\n`));
+        }
+      } else {
+        const config = require('../config/setup').loadConfig() || {};
+        console.log(chalk.bold(`\n  当前 provider: ${chalk.cyan(config.provider || '(默认)')}`));
+        const { listProviders } = require('../config/providers');
+        console.log(chalk.gray('\n  可用 providers:'));
+        for (const p of listProviders()) {
+          const active = p.id === config.provider ? chalk.green(' ← 当前') : '';
+          console.log(`    ${chalk.cyan(p.id.padEnd(12))} ${p.name}${active}`);
+        }
+        console.log(chalk.gray('\n  切换示例: /provider openrouter\n'));
+      }
+      rl.prompt();
+      return;
+    }
+
     if (input.startsWith('/viking') || input.startsWith('/记忆文件')) {
       const { vikingStore } = require('../memory/viking-store');
       const args = input.replace(/^\/(viking|记忆文件)\s*/, '').trim();
@@ -338,6 +398,47 @@ async function startRepl(options) {
           console.log(`    ${status} ${chalk.gray(time)} ${chalk.white(h.prompt.slice(0, 60))}`);
         }
         console.log();
+      }
+      rl.prompt();
+      return;
+    }
+
+    // ── 会话持久化 ──
+    if (input === '/resume' || input === '/继续') {
+      const { loadSession } = require('./session-store');
+      const session = loadSession();
+      if (!session) {
+        console.log(chalk.gray('\n  没有可恢复的会话\n'));
+      } else {
+        console.log(chalk.green(`\n  ✓ 恢复会话: ${session.prompt?.slice(0, 50) || '(未知)'}`));
+        console.log(chalk.gray(`    ${session.messages?.length || 0} 条消息 | ${session.savedAt}`));
+        // 用上次的 messages 继续对话
+        const { startSession } = require('./query-loop');
+        await startSession('继续上次的任务', {
+          ...options,
+          _resumeMessages: session.messages,
+          _onCost: (cost) => {
+            sessionCosts.totalUsd += cost.total.totalCostUsd;
+            sessionCosts.sessions++;
+          }
+        });
+        console.log();
+      }
+      rl.prompt();
+      return;
+    }
+
+    if (input === '/sessions' || input === '/会话') {
+      const { listSessions } = require('./session-store');
+      const sessions = listSessions(10);
+      if (sessions.length === 0) {
+        console.log(chalk.gray('\n  暂无保存的会话\n'));
+      } else {
+        console.log(chalk.bold('\n  📂 最近会话：\n'));
+        for (const s of sessions) {
+          console.log(`    ${chalk.gray(s.savedAt?.slice(0, 16) || '?')} ${chalk.white(s.prompt || '(无)')} ${chalk.gray(`(${s.messageCount} 条)`)}`);
+        }
+        console.log(chalk.gray('\n  输入 /resume 恢复最近会话\n'));
       }
       rl.prompt();
       return;

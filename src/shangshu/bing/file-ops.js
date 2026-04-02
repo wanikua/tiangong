@@ -157,7 +157,35 @@ function editFile(filePath, oldString, newString, replaceAll = false) {
   }
 
   fs.writeFileSync(filePath, content, 'utf-8');
-  return { replaced };
+
+  // 生成简洁 diff 信息
+  const diffInfo = `${path.basename(filePath)}: ${replaced} 处替换`;
+  return { replaced, diffInfo };
 }
 
-module.exports = { readFile, writeFile, editFile, validatePath, setAllowedRoots };
+/**
+ * 生成彩色 diff 预览文本
+ * @param {string} oldStr
+ * @param {string} newStr
+ * @param {string} filePath
+ * @returns {string}
+ */
+function generateDiffPreview(oldStr, newStr, filePath) {
+  const lines = [];
+  lines.push(`--- ${filePath}`);
+  lines.push(`+++ ${filePath}`);
+
+  const oldLines = oldStr.split('\n');
+  const newLines = newStr.split('\n');
+
+  for (const line of oldLines) {
+    lines.push(`- ${line}`);
+  }
+  for (const line of newLines) {
+    lines.push(`+ ${line}`);
+  }
+
+  return lines.join('\n');
+}
+
+module.exports = { readFile, writeFile, editFile, validatePath, setAllowedRoots, generateDiffPreview };

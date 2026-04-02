@@ -688,6 +688,39 @@ function generateRedeemCode() {
   return code;
 }
 
+  /**
+   * 显示排行榜（本地成绩）
+   */
+  printLeaderboard() {
+    const collected = this.data.collected || {};
+    const count = Object.keys(collected).length;
+    const total = Object.keys(TREASURES).length;
+    const rarities = { legendary: 0, epic: 0, rare: 0, uncommon: 0, common: 0 };
+
+    for (const id of Object.keys(collected)) {
+      const t = TREASURES[id];
+      if (t) rarities[t.rarity] = (rarities[t.rarity] || 0) + 1;
+    }
+
+    // 计算得分：legendary=100, epic=50, rare=20, uncommon=10, common=5
+    const weights = { legendary: 100, epic: 50, rare: 20, uncommon: 10, common: 5 };
+    const score = Object.entries(rarities).reduce((s, [r, c]) => s + (weights[r] || 0) * c, 0);
+
+    const chalk = require('chalk');
+    console.log();
+    console.log(chalk.yellow('  🏆 宝藏排行榜\n'));
+    console.log(`  收集: ${chalk.bold(count)}/${total}  |  总分: ${chalk.yellow.bold(score)} 分`);
+    console.log();
+    console.log(`  ${chalk.red('传说')} ${rarities.legendary} | ${chalk.magenta('史诗')} ${rarities.epic} | ${chalk.blue('稀有')} ${rarities.rare} | ${chalk.green('优秀')} ${rarities.uncommon} | ${chalk.gray('普通')} ${rarities.common}`);
+    console.log();
+
+    // 分享链接
+    console.log(chalk.gray('  分享成绩: /treasure share'));
+    console.log(chalk.gray(`  成就: ${score >= 500 ? '🐲 龙之传人' : score >= 200 ? '⚔️ 朝廷柱石' : score >= 50 ? '📜 初出茅庐' : '🌱 新手寻宝'}`));
+    console.log();
+  }
+}
+
 const treasureManager = new TreasureManager();
 
 module.exports = { TreasureManager, treasureManager, TREASURES, RIDDLES };

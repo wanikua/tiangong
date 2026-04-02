@@ -172,8 +172,19 @@ const TOOLS = [
       required: ['file_path', 'old_string', 'new_string']
     },
     execute: async (input) => {
+      // diff 预览（显示在终端供用户可见）
+      const chalk = require('chalk');
+      const oldLines = input.old_string.split('\n');
+      const newLines = input.new_string.split('\n');
+      if (process.stdout.isTTY && (oldLines.length > 1 || newLines.length > 1)) {
+        console.log(chalk.gray(`    📝 ${path.basename(input.file_path)}:`));
+        for (const l of oldLines.slice(0, 3)) console.log(chalk.red(`    - ${l}`));
+        if (oldLines.length > 3) console.log(chalk.gray(`    ... (${oldLines.length} 行)`));
+        for (const l of newLines.slice(0, 3)) console.log(chalk.green(`    + ${l}`));
+        if (newLines.length > 3) console.log(chalk.gray(`    ... (${newLines.length} 行)`));
+      }
       const result = editFile(input.file_path, input.old_string, input.new_string, input.replace_all);
-      return `已替换 ${result.replaced} 处`;
+      return `已替换 ${result.replaced} 处 (${path.basename(input.file_path)})`;
     }
   },
   {
@@ -287,7 +298,13 @@ function formatBytes(bytes) {
  * @returns {Array}
  */
 function getToolSchemas(ministries) {
-  let tools = TOOLS;
+  // 合并内置工具 + 插件工具
+  let tools = [...TOOLS];
+  try {
+    const { pluginManager } = require('../../plugins/loader');
+    tools = [...tools, ...pluginManager.getPluginTools()];
+  } catch { /* plugins not loaded */ }
+
   if (ministries) {
     tools = tools.filter(t => ministries.includes(t.ministry));
   }
@@ -306,7 +323,14 @@ function getToolSchemas(ministries) {
  * @returns {Promise<string>}
  */
 async function executeTool(toolName, input, context) {
-  const tool = TOOLS.find(t => t.name === toolName);
+  // 搜索内置工具 + 插件工具
+  let tool = TOOLS.find(t => t.name === toolName);
+  if (!tool) {
+    try {
+      const { pluginManager } = require('../../plugins/loader');
+      tool = pluginManager.getPluginTools().find(t => t.name === toolName);
+    } catch { /* ignore */ }
+  }
   if (!tool) {
     throw new Error(`未知工具: ${toolName}。可用工具: ${TOOLS.map(t => t.name).join(', ')}`);
   }

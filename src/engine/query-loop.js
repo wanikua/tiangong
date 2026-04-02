@@ -107,6 +107,14 @@ async function startSession(prompt, options = {}) {
       // ── 工具调用循环（和 Claude Code 一样，LLM 可以多轮使用工具）──
       let useStreaming = false;
       for (let round = 0; round < MAX_ROUNDS; round++) {
+        // 上下文压缩：messages 过多时保留首尾，丢弃中间
+        if (messages.length > 20) {
+          const head = messages.slice(0, 1);       // 用户原始输入
+          const tail = messages.slice(-6);          // 最近 3 轮（6条消息）
+          const dropped = messages.length - 7;
+          messages.length = 0;
+          messages.push(...head, { role: 'user', content: `[系统：中间 ${dropped} 条消息已压缩，保留最近上下文]` }, ...tail);
+        }
         // 最后回复尝试流式输出（非工具轮）
         if (useStreaming) {
           chatSpinner.stop();
@@ -265,6 +273,12 @@ async function startSession(prompt, options = {}) {
       console.log(chalk.gray('  ─────────────────────────────────────────────'));
       console.log(chalk.gray(`  💬 快速回答 | ⏱ ${elapsed}`));
       console.log();
+
+      // 自动保存会话
+      try {
+        const { saveSession, generateSessionId } = require('./session-store');
+        saveSession(generateSessionId(), { messages, prompt, model, regime: regimeId });
+      } catch { /* ignore */ }
     } catch (err) {
       chatSpinner.fail('回复失败: ' + err.message);
     }
