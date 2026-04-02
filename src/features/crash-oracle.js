@@ -206,7 +206,7 @@ async function analyzeAndFix(params) {
     }
 
     const cost = costTracker.getSummary();
-    console.log(chalk.gray(`\n  💰 天书费用: $${cost.total.totalCostUsd.toFixed(4)}`));
+    console.log(chalk.gray(`\n  ⚡ 天书消耗: ${cost.total.inputTokens + cost.total.outputTokens} tokens`));
     console.log();
 
     return {

@@ -172,7 +172,7 @@ async function runPK(params) {
 
   // 费用汇总
   const cost = costTracker.getSummary();
-  console.log(chalk.gray(`\n  💰 殿试费用: $${cost.total.totalCostUsd.toFixed(4)}`));
+  console.log(chalk.gray(`\n  ⚡ 殿试消耗: ${cost.total.inputTokens + cost.total.outputTokens} tokens`));
 
   return { results, cost };
 }

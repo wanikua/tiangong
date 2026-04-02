@@ -164,7 +164,7 @@ async function runDebate(params) {
   }
 
   const cost = costTracker.getSummary();
-  console.log(chalk.gray(`\n  💰 廷议费用: $${cost.total.totalCostUsd.toFixed(4)} | ${cost.total.inputTokens + cost.total.outputTokens} tokens`));
+  console.log(chalk.gray(`\n  ⚡ 廷议消耗: ${cost.total.inputTokens + cost.total.outputTokens} tokens`));
   console.log();
 
   return { transcript, topic, rounds };

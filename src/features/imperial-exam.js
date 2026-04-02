@@ -240,7 +240,8 @@ async function runExam(params) {
   const xpGained = Math.round(totalScore * 2);
   reputationManager.reward(agentId, 'task_complete', { exam: true, score: totalScore });
 
-  console.log(chalk.gray(`\n  💰 考试费用: $${costTracker.getSummary().total.totalCostUsd.toFixed(4)}`));
+  const examSummary = costTracker.getSummary();
+  console.log(chalk.gray(`\n  ⚡ 考试消耗: ${examSummary.total.inputTokens + examSummary.total.outputTokens} tokens`));
   console.log(chalk.gray(`  ⭐ 获得功勋: +${xpGained} XP`));
   console.log();
 

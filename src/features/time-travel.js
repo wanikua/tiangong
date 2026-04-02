@@ -242,7 +242,8 @@ class SessionRecorder {
 
     // 费用
     if (session.cost) {
-      console.log(chalk.gray(`\n  💰 费用: $${session.cost.total?.totalCostUsd?.toFixed(4) || '-'}`));
+      const totalTokens = (session.cost.total?.inputTokens || 0) + (session.cost.total?.outputTokens || 0);
+      console.log(chalk.gray(`\n  ⚡ 消耗: ${totalTokens} tokens`));
     }
 
     console.log();
