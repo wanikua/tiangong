@@ -634,7 +634,12 @@ async function startRepl(options) {
 
       isProcessing = true;
       try {
-        await runPK({ prompt: pkPrompt, contestants, judgeId, regimeId: currentRegime });
+        await runPK({
+          prompt: pkPrompt, contestants, judgeId, regimeId: currentRegime,
+          onAskUser: (question) => new Promise(resolve => {
+            rl.question(question, answer => resolve(answer.trim()));
+          })
+        });
         console.log(chalk.gray('  💡 想看谁升官了？试试 /rank | 想考考他们？试试 /exam ' + contestants[0]));
       } catch (err) {
         console.error(chalk.red(`\n  PK 执行失败: ${err.message}\n`));

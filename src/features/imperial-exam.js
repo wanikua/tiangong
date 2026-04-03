@@ -143,8 +143,15 @@ async function runExam(params) {
       maxPossible += question.maxScore;
       scoreCard[subjectName].max += question.maxScore;
 
+      // 显示题目（让用户也能看到考的是什么）
+      console.log(chalk.white(`  📋 第${qi + 1}题`) + chalk.gray(` (满分 ${question.maxScore} 分):`));
+      for (const line of question.q.split('\n')) {
+        console.log(chalk.white(`     ${line}`));
+      }
+      console.log();
+
       const spinner = new Spinner({ color: 'cyan' });
-      spinner.start(`第${qi + 1}题 答题中...`);
+      spinner.start(`${agentId} 答题中...`);
 
       try {
         // Agent 答题
@@ -182,12 +189,24 @@ async function runExam(params) {
           comment = '(评分解析失败)';
         }
 
-        spinner.succeed(`第${qi + 1}题: ${scoreEmoji(score, question.maxScore)} ${score}/${question.maxScore} 分`);
+        spinner.succeed(`答题完成`);
 
-        // 显示简要答案
-        const shortAnswer = answer.split('\n').slice(0, 5).join('\n');
-        console.log(chalk.gray(`    ${shortAnswer.split('\n').map(l => '    ' + l).join('\n')}`));
-        if (comment) console.log(chalk.gray(`    评语: ${comment}`));
+        // 显示完整答案（让用户能从中学习）
+        console.log(chalk.gray(`  ┌─ ${agentId} 的答案 ────────────────────────────`));
+        const answerLines = answer.split('\n');
+        const showLines = answerLines.slice(0, 25);
+        for (const line of showLines) {
+          console.log(chalk.gray('  │ ') + chalk.white(line));
+        }
+        if (answerLines.length > 25) {
+          console.log(chalk.gray('  │ ') + chalk.gray(`... (还有 ${answerLines.length - 25} 行)`));
+        }
+        console.log(chalk.gray('  └──────────────────────────────────────────────'));
+
+        // 得分 + 评语
+        console.log();
+        console.log(`  ${scoreEmoji(score, question.maxScore)} 得分: ${chalk.bold.yellow(score + '/' + question.maxScore)} 分`);
+        if (comment) console.log(chalk.gray(`  📝 评语: ${comment}`));
         console.log();
 
         totalScore += score;
@@ -197,6 +216,7 @@ async function runExam(params) {
       } catch (err) {
         spinner.fail(`第${qi + 1}题 答题失败: ${err.message}`);
         scoreCard[subjectName].questions.push({ score: 0, maxScore: question.maxScore, error: err.message });
+        console.log();
       }
     }
   }
