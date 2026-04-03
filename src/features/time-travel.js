@@ -170,7 +170,8 @@ class SessionRecorder {
     for (const s of sessions) {
       const status = s.success === true ? chalk.green('✓') : s.success === false ? chalk.red('✗') : chalk.yellow('…');
       const time = new Date(s.startedAt).toLocaleString().slice(0, -3);
-      const prompt = s.prompt.slice(0, 30) + (s.prompt.length > 30 ? '…' : '');
+      const promptText = s.prompt || '(无)';
+      const prompt = promptText.slice(0, 30) + (promptText.length > 30 ? '…' : '');
       const cost = s.cost?.total?.totalCostUsd
         ? chalk.gray(`$${s.cost.total.totalCostUsd.toFixed(4)}`)
         : chalk.gray('-');
@@ -201,7 +202,7 @@ class SessionRecorder {
     console.log(`  ${chalk.white('制度:')}   ${session.regime}`);
     console.log(`  ${chalk.white('模型:')}   ${session.model}`);
     console.log(`  ${chalk.white('时间:')}   ${new Date(session.startedAt).toLocaleString()}`);
-    console.log(`  ${chalk.white('状态:')}   ${session.success ? chalk.green('成功') : chalk.red('失败')}`);
+    console.log(`  ${chalk.white('状态:')}   ${session.success === true ? chalk.green('成功') : session.success === false ? chalk.red('失败') : chalk.yellow('进行中')}`);
     console.log(`  ${chalk.white('目录:')}   ${chalk.gray(session.cwd)}`);
 
     // 步骤回放
@@ -306,7 +307,7 @@ class SessionRecorder {
       console.log(chalk.bold('\n  本周旨意摘要:'));
       for (const s of sessions.slice(0, 10)) {
         const status = s.success ? chalk.green('✓') : chalk.red('✗');
-        console.log(`    ${status} ${chalk.gray(new Date(s.startedAt).toLocaleDateString())} ${s.prompt.slice(0, 50)}`);
+        console.log(`    ${status} ${chalk.gray(new Date(s.startedAt).toLocaleDateString())} ${(s.prompt || '(无)').slice(0, 50)}`);
       }
       if (sessions.length > 10) {
         console.log(chalk.gray(`    ... 还有 ${sessions.length - 10} 条`));

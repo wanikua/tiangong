@@ -213,8 +213,9 @@ class Dispatcher {
       });
 
       // 记录用量
-      const inputTokens = response.usage.input_tokens || response.usage.prompt_tokens || 0;
-      const outputTokens = response.usage.output_tokens || response.usage.completion_tokens || 0;
+      const usage = response.usage || {};
+      const inputTokens = usage.input_tokens || usage.prompt_tokens || 0;
+      const outputTokens = usage.output_tokens || usage.completion_tokens || 0;
       this.costTracker.record(agentId, this.model || 'claude-sonnet-4-6', inputTokens, outputTokens);
 
       // 有文本内容 → 输出

@@ -112,7 +112,7 @@ async function startSession(prompt, options = {}) {
       });
       const tools = getToolSchemas();
       // 对话连续性：如果有上一轮的 messages，追加当前用户输入
-      const messages = options._messages
+      let messages = options._messages
         ? [...options._messages, { role: 'user', content: prompt }]
         : [{ role: 'user', content: prompt }];
       const cwd = process.cwd();
@@ -308,6 +308,20 @@ async function startSession(prompt, options = {}) {
       } catch (err) { log.debug('reputation reward failed', err.message); }
 
       const elapsed = formatDuration(Date.now() - sessionStart);
+
+      // 上报花费给 REPL（/cost 可以看到）
+      if (options._onCost) {
+        try {
+          const { CostTracker } = require('../shangshu/hu/cost-tracker');
+          const ct = new CostTracker();
+          // 粗略估算：每轮 messages 增长 ~2 条，每条约 500 tokens
+          const estInputTokens = messages.length * 500;
+          const estOutputTokens = (finalContent || '').length;
+          ct.record(chatAgent, model, estInputTokens, estOutputTokens);
+          options._onCost(ct.getSummary());
+        } catch { /* ignore */ }
+      }
+
       console.log();
       console.log(chalk.gray('  ─────────────────────────────────────────────'));
       console.log(chalk.gray(`  快速回答 | ${elapsed}`));

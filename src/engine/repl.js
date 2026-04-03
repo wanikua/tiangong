@@ -1209,7 +1209,7 @@ function isVagueInput(input) {
     /^(?:help me|do something|make something|fix it|do it)$/i,
     /^(?:开始|start|go|run|执行|干活)[吧呗啊哦!！]?$/,
     /^(?:快|赶紧|马上)[吧呗啊哦]?$/,
-    /^.{1,4}[吧呗啊]$/,  // 极短+语气词，如"写吧"、"来呗"
+    /^.{1,2}[吧呗啊]$/,  // 极短+语气词，如"写吧"、"来呗"（放宽到3字，避免误杀"部署吧"等）
   ];
   return vague.some(p => p.test(input));
 }
