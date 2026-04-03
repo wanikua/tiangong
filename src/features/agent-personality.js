@@ -100,8 +100,8 @@ class PersonalityManager {
    * @returns {object}
    */
   getPersonality(agentId) {
-    if (!this.data[agentId]) {
-      // 首次访问，随机分配
+    if (!this.data[agentId] || !MBTI_TYPES[this.data[agentId].mbti] || !ZODIAC_SIGNS[this.data[agentId].zodiac]) {
+      // 首次访问或已保存的类型被移除，重新分配
       this.data[agentId] = this._randomPersonality(agentId);
       this._save();
     }
