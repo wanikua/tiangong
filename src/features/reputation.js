@@ -270,8 +270,9 @@ class ReputationManager {
       const filled = Math.round(barLen * rank.progress);
       const bar = chalk.green('█'.repeat(filled)) + chalk.gray('░'.repeat(barLen - filled));
 
+      const { padEndCJK } = require('../utils/terminal');
       console.log(
-        `  ${medal}  ${rank.emoji} ${chalk.white(rank.title.padEnd(6))} ${chalk.cyan(a.id.padEnd(14))} ${chalk.yellow(String(a.xp).padStart(6))} ${bar}  ${winRate.padStart(4)}  ${a.bestStreak > 0 ? chalk.red('🔥' + a.bestStreak) : chalk.gray('-')}`
+        `  ${medal}  ${rank.emoji} ${chalk.white(padEndCJK(rank.title, 8))} ${chalk.cyan(padEndCJK(a.id, 16))} ${chalk.yellow(String(a.xp).padStart(6))} ${bar}  ${winRate.padStart(4)}  ${a.bestStreak > 0 ? chalk.red('🔥' + a.bestStreak) : chalk.gray('-')}`
       );
     }
     console.log();

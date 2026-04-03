@@ -239,7 +239,8 @@ async function runExam(params) {
     const barColor = pct >= 0.8 ? chalk.green : pct >= 0.6 ? chalk.yellow : chalk.red;
     const bar = barColor('█'.repeat(filled)) + chalk.gray('░'.repeat(barLen - filled));
 
-    console.log(`    ${subjectDef.icon} ${chalk.white(subjectName.padEnd(4))} ${bar} ${data.total}/${data.max} (${Math.round(pct * 100)}%)`);
+    const { padEndCJK } = require('../utils/terminal');
+    console.log(`    ${subjectDef.icon} ${chalk.white(padEndCJK(subjectName, 6))} ${bar} ${data.total}/${data.max} (${Math.round(pct * 100)}%)`);
   }
 
   // 等第

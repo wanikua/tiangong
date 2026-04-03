@@ -72,4 +72,15 @@ function bannerBox(title, opts = {}) {
   ].join('\n');
 }
 
-module.exports = { displayWidth, bannerLine, bannerBox, BOX_WIDTH };
+/**
+ * CJK-aware padEnd — 按显示宽度填充到目标列数
+ * @param {string} str - 可含 ANSI codes
+ * @param {number} width - 目标显示列数
+ * @returns {string}
+ */
+function padEndCJK(str, width) {
+  const pad = Math.max(0, width - displayWidth(str));
+  return str + ' '.repeat(pad);
+}
+
+module.exports = { displayWidth, padEndCJK, bannerLine, bannerBox, BOX_WIDTH };

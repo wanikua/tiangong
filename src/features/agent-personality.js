@@ -246,7 +246,8 @@ ${zodiac.modifier}
       const mbti = MBTI_TYPES[p.mbti];
       const zodiac = ZODIAC_SIGNS[p.zodiac];
 
-      console.log(`  ${agent.emoji} ${chalk.cyan(agent.name.padEnd(6))} ${chalk.gray(`(${agent.id})`)}`);
+      const { padEndCJK } = require('../utils/terminal');
+      console.log(`  ${agent.emoji} ${chalk.cyan(padEndCJK(agent.name, 8))} ${chalk.gray(`(${agent.id})`)}`);
       console.log(`    MBTI: ${chalk.white(p.mbti)} ${mbti.emoji} ${mbti.name} — ${chalk.gray(mbti.style)}`);
       console.log(`    星座: ${zodiac.emoji} ${chalk.white(p.zodiac)} — ${chalk.gray(zodiac.trait)}`);
       console.log();

@@ -277,13 +277,19 @@ async function startRepl(options) {
 
     if (input === '/exit' || input === '/退朝' || input === '/quit') {
       console.log();
-      console.log(chalk.yellow('  ┌──────────────────────────────────────┐'));
-      console.log(chalk.yellow('  │') + chalk.white('  退朝。天下太平。百官跪安。            ') + chalk.yellow('│'));
+      const { displayWidth } = require('../utils/terminal');
+      const W = 38;
+      const exitLine = (content) => {
+        const p = Math.max(0, W - displayWidth(content));
+        return chalk.yellow('  │') + content + ' '.repeat(p) + chalk.yellow('│');
+      };
+      console.log(chalk.yellow('  ┌' + '─'.repeat(W) + '┐'));
+      console.log(exitLine(chalk.white('  退朝。天下太平。百官跪安。')));
       if (sessionCosts.sessions > 0) {
         const totalTokens = (sessionCosts.inputTokens + sessionCosts.outputTokens).toLocaleString();
-        console.log(chalk.yellow('  │') + chalk.gray(`  本朝会 ${sessionCosts.sessions} 道旨意，${totalTokens} tokens`.padEnd(38)) + chalk.yellow('│'));
+        console.log(exitLine(chalk.gray(`  本朝会 ${sessionCosts.sessions} 道旨意，${totalTokens} tokens`)));
       }
-      console.log(chalk.yellow('  └──────────────────────────────────────┘'));
+      console.log(chalk.yellow('  └' + '─'.repeat(W) + '┘'));
       console.log();
       rl.close();
       return;
@@ -531,14 +537,15 @@ async function startRepl(options) {
       console.log(chalk.gray(`  ─────────────────────────────`));
       console.log(`  ${chalk.white('大臣数:')} ${chalk.cyan(agentCount)}   ${chalk.white('记忆总条数:')} ${chalk.cyan(totalMem)}`);
       console.log();
+      const { padEndCJK } = require('../utils/terminal');
       for (const [id, mems] of Object.entries(data.agents)) {
         if (mems.length > 0) {
           const bar = '█'.repeat(Math.min(mems.length, 20)) + '░'.repeat(Math.max(0, 20 - mems.length));
-          console.log(`    ${chalk.cyan(id.padEnd(16))} ${chalk.green(bar)} ${mems.length} 条`);
+          console.log(`    ${chalk.cyan(padEndCJK(id, 16))} ${chalk.green(bar)} ${mems.length} 条`);
         }
       }
       if (data.court.length > 0) {
-        console.log(`    ${chalk.yellow('朝廷共识'.padEnd(14))} ${'█'.repeat(Math.min(data.court.length, 20))} ${data.court.length} 条`);
+        console.log(`    ${chalk.yellow(padEndCJK('朝廷共识', 16))} ${'█'.repeat(Math.min(data.court.length, 20))} ${data.court.length} 条`);
       }
       console.log();
       rl.prompt();
