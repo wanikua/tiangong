@@ -15,6 +15,7 @@ const { callLLM, callLLMStreaming } = require('./li/api-client');
 const { getToolSchemas, executeTool, executeToolsBatched } = require('./bing/tools');
 const { CostTracker } = require('./hu/cost-tracker');
 const { buildSystemPrompt } = require('../zhongshu/prompt-builder');
+const { gatherProjectContext } = require('../zhongshu/planner');
 const { memoryStore } = require('../memory/store');
 const { processConversation } = require('../memory/extractor');
 const { vikingStore } = require('../memory/viking-store');
@@ -46,6 +47,14 @@ class Dispatcher {
   async executePlan(plan) {
     const results = {};
 
+    // 预采集项目上下文（一次采集，所有 agent 共享）
+    try {
+      this._projectContext = await gatherProjectContext(this.cwd);
+    } catch (err) {
+      log.debug('项目上下文采集失败:', err.message);
+      this._projectContext = '';
+    }
+
     // 开始记录会话（奏折）
     const sessionId = sessionRecorder.startSession(plan.prompt, {
       regime: this.regimeId,
@@ -67,10 +76,11 @@ class Dispatcher {
           }
         }
 
+        // 传递所有已完成步骤的输出（完整推理链，不只是直接依赖）
         const upstreamOutputs = {};
-        if (step.dependencies) {
-          for (const depId of step.dependencies) {
-            upstreamOutputs[depId] = results[depId];
+        for (const [id, r] of Object.entries(results)) {
+          if (r.status === 'success') {
+            upstreamOutputs[id] = r;
           }
         }
 
@@ -85,10 +95,26 @@ class Dispatcher {
         reputationManager.reward(step.agent, 'task_complete');
         if (elapsed < 10000) reputationManager.reward(step.agent, 'task_fast');
 
+        // Viking 自进化：成功经验（用实际 status 判断）
+        try {
+          vikingStore.evolveFromSession(step.agent, plan.prompt, result.content, {
+            success: true,
+            toolCalls: result.rounds || 0
+          });
+        } catch (err2) { log.debug('Viking evolve failed:', err2.message); }
+
       } catch (err) {
         results[step.id] = { status: 'failed', error: err.message, completedAt: new Date().toISOString() };
         this.onProgress({ type: 'step_failed', step: step.id, agent: step.agent, error: err.message });
         sessionRecorder.recordEvent(sessionId, { type: 'step_failed', step: step.id, agent: step.agent, error: err.message });
+
+        // Viking 自进化：失败教训
+        try {
+          vikingStore.evolveFromSession(step.agent, plan.prompt, '', {
+            success: false,
+            error: err.message
+          });
+        } catch (err2) { log.debug('Viking evolve failed:', err2.message); }
 
         // 功勋惩罚
         reputationManager.penalize(step.agent, 'task_fail');
@@ -105,7 +131,46 @@ class Dispatcher {
     // 结束会话记录
     sessionRecorder.endSession(sessionId, finalResult);
 
+    // 自动进化评估：任务完成后检查 agent 表现，低于阈值自动优化 prompt
+    this._tryAutoEvolution(plan, results).catch(err =>
+      log.debug('自动进化评估失败:', err.message)
+    );
+
     return finalResult;
+  }
+
+  /**
+   * 自动进化评估 — 任务完成后检查 agent 成功率，触发 prompt 优化
+   * @private
+   */
+  async _tryAutoEvolution(plan, results) {
+    try {
+      const { optimizeAgentPrompt } = require('../features/auto-prompt-optimizer');
+
+      // 收集本次执行中失败的 agent
+      const failedAgents = new Set();
+      for (const step of plan.steps) {
+        const r = results[step.id];
+        if (r && r.status === 'failed') {
+          failedAgents.add(step.agent);
+        }
+      }
+
+      if (failedAgents.size === 0) return;
+
+      // 对失败的 agent 尝试自动优化（后台静默执行）
+      for (const agentId of failedAgents) {
+        const rep = reputationManager.getAgent(agentId);
+        const successRate = rep.totalTasks > 0 ? rep.successTasks / rep.totalTasks : 1;
+        // 至少 3 次任务且成功率 < 80% 才触发优化
+        if (rep.totalTasks >= 3 && successRate < 0.8) {
+          log.info(`自动进化: ${agentId} 成功率 ${Math.round(successRate * 100)}%，触发 prompt 优化`);
+          await optimizeAgentPrompt(agentId);
+        }
+      }
+    } catch (err) {
+      log.debug('自动进化模块加载失败:', err.message);
+    }
   }
 
   /**
@@ -217,13 +282,7 @@ class Dispatcher {
     // 记忆提取：从最终输出中学习
     processConversation(originalPrompt, finalContent, agentId, { projectPath: this.cwd });
 
-    // OpenViking 自进化：将经验写入虚拟文件系统
-    try {
-      vikingStore.evolveFromSession(agentId, originalPrompt, finalContent, {
-        success: !!finalContent,
-        toolCalls: messages.filter(m => m.role === 'assistant').length
-      });
-    } catch (err) { log.debug('Viking 自进化失败:', err.message); }
+    // OpenViking 自进化：移至 executePlan 中，根据实际 step 成功/失败判断
 
     return {
       agent: agentId,
@@ -239,8 +298,11 @@ class Dispatcher {
   _buildAgentContext(agentId, step, upstreamOutputs, originalPrompt) {
     const parts = [];
 
-    // 角色 prompt
-    parts.push(buildSystemPrompt(agentId, this.regimeId, { cwd: this.cwd }));
+    // 角色 prompt（含项目上下文）
+    parts.push(buildSystemPrompt(agentId, this.regimeId, {
+      cwd: this.cwd,
+      projectContext: this._projectContext || ''
+    }));
 
     // OpenViking 上下文注入（L0/L1 按需加载）
     try {

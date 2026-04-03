@@ -69,9 +69,9 @@ async function startSession(prompt, options = {}) {
   const planSpinner = new Spinner({ color: 'yellow' });
   planSpinner.start(`${L.planning.icon} ${L.planning.name}${L.planning.verb}...`);
 
-  const plan = generatePlan(prompt, regimeId);
+  const plan = await generatePlan(prompt, regimeId, { cwd: process.cwd() });
 
-  planSpinner.succeed(`${L.planning.icon} ${L.planning.name}${L.planning.verb} — ${plan.steps.length} 步`);
+  planSpinner.succeed(`${L.planning.icon} ${L.planning.name}${L.planning.verb} — ${plan.steps.length} 步 ${plan.planMethod === 'llm' ? chalk.green('(智能规划)') : ''}`);
 
   if (verbose || options.dryRun) {
     console.log(chalk.gray('  执行计划:'));
@@ -99,9 +99,22 @@ async function startSession(prompt, options = {}) {
     chatSpinner.start(chalk.cyan(`[${chatAgent}]`) + ' 回复中...');
 
     try {
-      const systemPrompt = buildSystemPrompt(chatAgent, regimeId, { cwd: process.cwd() });
+      // 采集项目上下文给快速路径 agent
+      let projectContext = '';
+      try {
+        const { gatherProjectContext } = require('../zhongshu/planner');
+        projectContext = await gatherProjectContext(process.cwd());
+      } catch (err) { log.debug('项目上下文采集失败:', err.message); }
+
+      const systemPrompt = buildSystemPrompt(chatAgent, regimeId, {
+        cwd: process.cwd(),
+        projectContext
+      });
       const tools = getToolSchemas();
-      const messages = [{ role: 'user', content: prompt }];
+      // 对话连续性：如果有上一轮的 messages，追加当前用户输入
+      const messages = options._messages
+        ? [...options._messages, { role: 'user', content: prompt }]
+        : [{ role: 'user', content: prompt }];
       const cwd = process.cwd();
       let finalContent = '';
       const MAX_ROUNDS = 15;
@@ -280,11 +293,14 @@ async function startSession(prompt, options = {}) {
         const { saveSession, generateSessionId } = require('./session-store');
         saveSession(generateSessionId(), { messages, prompt, model, regime: regimeId });
       } catch (err) { log.debug('session save failed', err.message); }
+
+      // 返回 messages 供 REPL 保持对话连续性
+      return { messages };
     } catch (err) {
       chatSpinner.fail('回复失败: ' + err.message);
     }
 
-    return;
+    return {};
   }
 
   // ── 审核层 ──
@@ -444,10 +460,33 @@ async function startSession(prompt, options = {}) {
   console.log(chalk.gray(`  预算: ${progressBar(cost.total.totalCostUsd, cost.budget.max, 20)}`));
   console.log();
 
+  // 多 Agent 路径也保存会话
+  try {
+    const { saveSession, generateSessionId } = require('./session-store');
+    // 收集各 agent 输出作为摘要 messages
+    const summaryMessages = [{ role: 'user', content: prompt }];
+    for (const [stepId, stepResult] of Object.entries(result.results)) {
+      if (stepResult.output?.content) {
+        summaryMessages.push({ role: 'assistant', content: `[${stepResult.output.agent}] ${stepResult.output.content}` });
+      }
+    }
+    saveSession(generateSessionId(), { messages: summaryMessages, prompt, model, regime: regimeId });
+  } catch (err) { log.debug('multi-agent session save failed', err.message); }
+
   // 回调 REPL 的花费追踪
   if (options._onCost) {
     options._onCost(cost);
   }
+
+  // 返回摘要 messages 供 REPL 保持上下文
+  const returnMessages = options._messages ? [...options._messages] : [];
+  returnMessages.push({ role: 'user', content: prompt });
+  // 附上最终 agent 输出作为 assistant 消息
+  const lastOutput = Object.values(result.results).filter(r => r.output?.content).pop();
+  if (lastOutput) {
+    returnMessages.push({ role: 'assistant', content: lastOutput.output.content });
+  }
+  return { messages: returnMessages };
 }
 
 module.exports = { startSession };

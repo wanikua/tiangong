@@ -59,6 +59,7 @@ async function startRepl(options) {
   let sessionCosts = { totalUsd: 0, inputTokens: 0, outputTokens: 0, sessions: 0 };
   let isProcessing = false; // 防止并发
   let isFirstSession = history.length === 0; // 新手标记
+  let sessionMessages = []; // 对话连续性：跨轮次保持 messages
 
   console.log(makeBanner(currentRegime));
 
@@ -441,18 +442,10 @@ async function startRepl(options) {
         console.log(chalk.gray('\n  没有可恢复的会话\n'));
       } else {
         console.log(chalk.green(`\n  ✓ 恢复会话: ${session.prompt?.slice(0, 50) || '(未知)'}`));
-        console.log(chalk.gray(`    ${session.messages?.length || 0} 条消息 | ${session.savedAt}`));
-        // 用上次的 messages 继续对话
-        const { startSession } = require('./query-loop');
-        await startSession('继续上次的任务', {
-          ...options,
-          _resumeMessages: session.messages,
-          _onCost: (cost) => {
-            sessionCosts.totalUsd += cost.total.totalCostUsd;
-            sessionCosts.sessions++;
-          }
-        });
-        console.log();
+        console.log(chalk.gray(`    ${session.messages?.length || 0} 条消息 | ${session.savedAt}\n`));
+        // 将上次的 messages 加载到当前对话上下文
+        sessionMessages = session.messages || [];
+        console.log(chalk.gray('  对话上下文已恢复，请继续输入旨意。\n'));
       }
       rl.prompt();
       return;
@@ -962,12 +955,22 @@ async function startRepl(options) {
 
     try {
       console.log();
-      await startSession(input, { ...options, regime: currentRegime, _onCost: (cost) => {
-        sessionCosts.totalUsd += cost.total.totalCostUsd;
-        sessionCosts.inputTokens += cost.total.inputTokens;
-        sessionCosts.outputTokens += cost.total.outputTokens;
-        sessionCosts.sessions++;
-      }});
+      const result = await startSession(input, {
+        ...options,
+        regime: currentRegime,
+        _messages: sessionMessages.length > 0 ? sessionMessages : undefined,
+        _onCost: (cost) => {
+          sessionCosts.totalUsd += cost.total.totalCostUsd;
+          sessionCosts.inputTokens += cost.total.inputTokens;
+          sessionCosts.outputTokens += cost.total.outputTokens;
+          sessionCosts.sessions++;
+        }
+      });
+
+      // 保持对话连续性：累积 messages
+      if (result && result.messages) {
+        sessionMessages = result.messages;
+      }
 
       history.push({ prompt: input, success: true, time: Date.now(), duration: Date.now() - startTime });
     } catch (err) {

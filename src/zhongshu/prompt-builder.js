@@ -113,8 +113,11 @@ function buildSystemPrompt(agentId, regimeId = 'ming', context = {}) {
     if (treasurePrompt) parts.push(treasurePrompt);
   } catch { /* treasure module not loaded */ }
 
-  // 额外上下文
-  if (context.cwd) {
+  // 项目上下文（由 dispatcher 预采集，包含 git 状态、项目结构等）
+  if (context.projectContext) {
+    parts.push(`\n## 当前项目上下文\n${context.projectContext}`);
+  } else if (context.cwd) {
+    // fallback: 至少告诉 agent 工作目录
     parts.push(`\n## 工作目录\n${context.cwd}`);
   }
   if (context.gitStatus) {

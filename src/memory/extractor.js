@@ -54,6 +54,31 @@ const EXTRACTION_PATTERNS = [
 ];
 
 /**
+ * Agent 输出中值得记忆的模式
+ * 用于多 Agent 执行时从 agent 回复中提取经验
+ */
+const AGENT_OUTPUT_PATTERNS = [
+  // 任务完成经验
+  {
+    type: 'skill',
+    patterns: [/成功(写入|创建|修改|部署|完成)|已完成|写入文件|created|deployed|fixed/i],
+    weight: 5
+  },
+  // 发现的问题
+  {
+    type: 'mistake',
+    patterns: [/发现(问题|漏洞|bug|错误)|注意到|warning:|error:|失败|failed/i],
+    weight: 7
+  },
+  // 技术选型/决策
+  {
+    type: 'decision',
+    patterns: [/建议(使用|采用|改为)|应该用|推荐|recommend|suggest using|better to use/i],
+    weight: 6
+  }
+];
+
+/**
  * 从用户消息中提取潜在的记忆
  * @param {string} userMessage - 用户消息
  * @param {string} assistantMessage - Agent 回复
@@ -65,10 +90,10 @@ const EXTRACTION_PATTERNS = [
 function extractMemories(userMessage, assistantMessage, agentId, options = {}) {
   const extracted = [];
 
+  // 从用户消息中提取（纠错、偏好、决策等）
   for (const rule of EXTRACTION_PATTERNS) {
     for (const pattern of rule.patterns) {
       if (pattern.test(userMessage)) {
-        // 提取关键句子（包含匹配的那一句）
         const sentences = userMessage.split(/[。！？\n.!?]/).filter(s => s.trim().length > 5);
         const matchedSentence = sentences.find(s => pattern.test(s));
 
@@ -81,7 +106,31 @@ function extractMemories(userMessage, assistantMessage, agentId, options = {}) {
             projectPath: options.projectPath
           });
         }
-        break; // 每个规则只匹配一次
+        break;
+      }
+    }
+  }
+
+  // 从 Agent 输出中提取经验（完成、发现问题、技术决策等）
+  if (assistantMessage) {
+    for (const rule of AGENT_OUTPUT_PATTERNS) {
+      for (const pattern of rule.patterns) {
+        if (pattern.test(assistantMessage)) {
+          const sentences = assistantMessage.split(/[。！？\n.!?]/).filter(s => s.trim().length > 5);
+          const matchedSentence = sentences.find(s => pattern.test(s));
+
+          if (matchedSentence && matchedSentence.length < 200) {
+            extracted.push({
+              type: rule.type,
+              content: matchedSentence.trim().slice(0, 150),
+              weight: rule.weight,
+              agentId,
+              source: 'agent_output',
+              projectPath: options.projectPath
+            });
+          }
+          break;
+        }
       }
     }
   }
