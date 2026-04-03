@@ -243,6 +243,23 @@ class TreasureManager {
    * 显示宝藏图鉴
    */
   printCollection() {
+    // 使用说明映射
+    function getTreasureUsage(id) {
+      const t = TREASURES[id];
+      if (!t?.effectType) return null;
+      if (t.effectDuration === 'permanent') return '已永久生效，自动应用于每次对话';
+      if (t.effectDuration?.startsWith('next_')) {
+        const uses = t.effectDuration.split('_')[1];
+        return `获得时自动激活，持续 ${uses} 轮对话`;
+      }
+      if (t.effectType === 'random_pool') return '获得时自动激活，随机触发一种效果';
+      if (t.effectType === 'repl_theme') return '已自动生效，永久改变 REPL 外观';
+      if (t.effectType === 'animation') return '已自动生效，任务完成时触发';
+      if (id.startsWith('key_')) return '获得后解锁对应命令';
+      if (id.startsWith('robe_') && id !== 'robe_complete') return '集齐 5 片自动合成龙袍';
+      return '/treasure hunt 寻宝获得';
+    }
+
     console.log();
     console.log(chalk.yellow('  ╔══════════════════════════════════════════════════════╗'));
     console.log(chalk.yellow('  ║') + chalk.bold.yellow('    宝 藏 图 鉴') + chalk.gray('          Treasure Collection') + '    ' + chalk.yellow('║'));
@@ -288,6 +305,9 @@ class TreasureManager {
         if (found) {
           console.log(`    ${chalk.green('✓')} ${item.name} — ${item.description}`);
           console.log(chalk.gray(`      效果: ${item.effect}`));
+          // 显示使用方式
+          const usage = getTreasureUsage(item.id);
+          if (usage) console.log(chalk.cyan(`      使用: ${usage}`));
         } else {
           console.log(`    ${chalk.gray('?')} ${chalk.gray('???')} — ${chalk.gray('(未发现)')}`);
         }
@@ -301,6 +321,12 @@ class TreasureManager {
       console.log(chalk.yellow(`  龙袍碎片: ${robeCount}/5 ${robeCount >= 5 ? '— 龙袍已合成！' : ''}`));
     }
 
+    // 使用提示
+    console.log(chalk.gray('  ───────────────────────────────────────────'));
+    console.log(chalk.gray('  大部分宝藏获得后自动生效（注入 Agent Prompt）'));
+    console.log(chalk.gray('  临时效果持续 1~3 轮对话后消失'));
+    console.log(chalk.gray('  永久效果自动应用于每次对话'));
+    console.log(chalk.gray('  /treasure hunt  寻宝 | /treasure riddle  谜语线索'));
     console.log();
   }
 
