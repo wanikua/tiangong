@@ -266,7 +266,7 @@ async function runCollaborativeCoding(params) {
   console.log('    ' + barColor('#'.repeat(filled)) + chalk.gray('.'.repeat(barLen - filled)) + ' ' + completedRoles + '/' + totalRoles + doneText + ' (' + Math.round(pct * 100) + '%)');
 
   const cost = costTracker.getSummary();
-  console.log(chalk.gray('\n  ' + ui.costLabel + ': $' + cost.total.totalCostUsd.toFixed(4)));
+  console.log(chalk.gray('\n  ' + ui.costLabel + ': ' + (cost.total.inputTokens + cost.total.outputTokens).toLocaleString() + ' tokens'));
   console.log();
 
   return { task, outputs, completedRoles, totalRoles, cost };

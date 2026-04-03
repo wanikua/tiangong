@@ -172,9 +172,8 @@ class SessionRecorder {
       const time = new Date(s.startedAt).toLocaleString().slice(0, -3);
       const promptText = s.prompt || '(无)';
       const prompt = promptText.slice(0, 30) + (promptText.length > 30 ? '…' : '');
-      const cost = s.cost?.total?.totalCostUsd
-        ? chalk.gray(`$${s.cost.total.totalCostUsd.toFixed(4)}`)
-        : chalk.gray('-');
+      const costTokens = s.cost?.total ? (s.cost.total.inputTokens || 0) + (s.cost.total.outputTokens || 0) : 0;
+      const cost = costTokens > 0 ? chalk.gray(`${costTokens.toLocaleString()} tk`) : chalk.gray('-');
 
       console.log(`  ${chalk.cyan(String(s.index).padStart(3))}   ${status}  ${chalk.gray(time)}  ${chalk.white(prompt.padEnd(30))}  ${cost}`);
     }
@@ -260,7 +259,7 @@ class SessionRecorder {
 
     const totalSessions = sessions.length;
     const successSessions = sessions.filter(s => s.success).length;
-    const totalCost = sessions.reduce((sum, s) => sum + (s.cost?.total?.totalCostUsd || 0), 0);
+    const totalTokens = sessions.reduce((sum, s) => sum + ((s.cost?.total?.inputTokens || 0) + (s.cost?.total?.outputTokens || 0)), 0);
 
     // 按 Agent 统计
     const agentStats = {};
@@ -285,7 +284,7 @@ class SessionRecorder {
     console.log();
     console.log(`  ${chalk.white('总旨意数:')}  ${chalk.cyan(totalSessions)}`);
     console.log(`  ${chalk.white('成功率:')}    ${totalSessions > 0 ? chalk.green(Math.round(successSessions / totalSessions * 100) + '%') : '-'}`);
-    console.log(`  ${chalk.white('总花费:')}    ${chalk.yellow('$' + totalCost.toFixed(4))}`);
+    console.log(`  ${chalk.white('Token:')}     ${chalk.yellow(totalTokens.toLocaleString() + ' tokens')}`);
 
     console.log(chalk.bold('\n  每日工作量:'));
     for (const [day, count] of Object.entries(dailyStats)) {

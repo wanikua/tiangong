@@ -13,8 +13,8 @@ const { PermissionGate } = require('../menxia/permission-gate');
 const { Dispatcher } = require('../shangshu/dispatcher');
 const { CostTracker } = require('../shangshu/hu/cost-tracker');
 const { loadConfig } = require('../config/setup');
-const { DEFAULT_REGIME, DEFAULT_MAX_BUDGET_USD } = require('../config/defaults');
-const { Spinner, progressBar, formatDuration } = require('./spinner');
+const { DEFAULT_REGIME } = require('../config/defaults');
+const { Spinner, formatDuration } = require('./spinner');
 const { createLogger } = require('../utils/logger');
 const log = createLogger('query-loop');
 
@@ -398,7 +398,7 @@ async function startSession(prompt, options = {}) {
   // ── 执行层 ──
   console.log(chalk.magenta(`\n  ${L.execute.icon} ${L.execute.name}${L.execute.verb}...\n`));
 
-  const costTracker = new CostTracker(DEFAULT_MAX_BUDGET_USD);
+  const costTracker = new CostTracker();
   let completedSteps = 0;
   const totalSteps = plan.steps.length;
 
@@ -488,15 +488,14 @@ async function startSession(prompt, options = {}) {
 
   console.log();
   console.log(chalk.gray('  ─────────────────────────────────────────────'));
-  console.log(chalk.gray(`  户部: ${chalk.yellow('$' + cost.total.totalCostUsd.toFixed(4))} | ${cost.total.inputTokens.toLocaleString()} in / ${cost.total.outputTokens.toLocaleString()} out | ${elapsed}`));
+  const totalTokens = (cost.total.inputTokens + cost.total.outputTokens).toLocaleString();
+  console.log(chalk.gray(`  户部: ${chalk.yellow(totalTokens + ' tokens')} | ${cost.total.inputTokens.toLocaleString()} in / ${cost.total.outputTokens.toLocaleString()} out | ${elapsed}`));
 
   if (verbose) {
     for (const [agentId, agentCost] of Object.entries(cost.perAgent)) {
-      console.log(chalk.gray(`     └ ${agentId}: $${agentCost.costUsd.toFixed(4)} (${agentCost.calls} 次调用)`));
+      console.log(chalk.gray(`     └ ${agentId}: ${(agentCost.inputTokens + agentCost.outputTokens).toLocaleString()} tokens (${agentCost.calls} 次调用)`));
     }
   }
-
-  console.log(chalk.gray(`  预算: ${progressBar(cost.total.totalCostUsd, cost.budget.max, 20)}`));
 
   // 功勋总结（多 Agent 路径 — dispatcher 已调过 reward，这里展示汇总）
   try {

@@ -112,7 +112,7 @@ ${chalk.gray('  ' + timeGreeting)}
 async function startRepl(options) {
   let currentRegime = options.regime || 'ming';
   const history = []; // 旨意历史
-  let sessionCosts = { totalUsd: 0, inputTokens: 0, outputTokens: 0, sessions: 0 };
+  let sessionCosts = { inputTokens: 0, outputTokens: 0, sessions: 0 };
   let isProcessing = false; // 防止并发
   let isFirstSession = history.length === 0; // 新手标记
   let sessionMessages = []; // 对话连续性：跨轮次保持 messages
@@ -280,8 +280,8 @@ async function startRepl(options) {
       console.log(chalk.yellow('  ┌──────────────────────────────────────┐'));
       console.log(chalk.yellow('  │') + chalk.white('  退朝。天下太平。百官跪安。            ') + chalk.yellow('│'));
       if (sessionCosts.sessions > 0) {
-        const costStr = `$${sessionCosts.totalUsd.toFixed(4)}`;
-        console.log(chalk.yellow('  │') + chalk.gray(`  本朝会 ${sessionCosts.sessions} 道旨意，花费 ${costStr}`.padEnd(38)) + chalk.yellow('│'));
+        const totalTokens = (sessionCosts.inputTokens + sessionCosts.outputTokens).toLocaleString();
+        console.log(chalk.yellow('  │') + chalk.gray(`  本朝会 ${sessionCosts.sessions} 道旨意，${totalTokens} tokens`.padEnd(38)) + chalk.yellow('│'));
       }
       console.log(chalk.yellow('  └──────────────────────────────────────┘'));
       console.log();
@@ -1115,9 +1115,8 @@ async function startRepl(options) {
         regime: currentRegime,
         _messages: sessionMessages.length > 0 ? sessionMessages : undefined,
         _onCost: (cost) => {
-          sessionCosts.totalUsd += cost.total.totalCostUsd;
-          sessionCosts.inputTokens += cost.total.inputTokens;
-          sessionCosts.outputTokens += cost.total.outputTokens;
+          sessionCosts.inputTokens += cost.total.inputTokens || 0;
+          sessionCosts.outputTokens += cost.total.outputTokens || 0;
           sessionCosts.sessions++;
         }
       });
@@ -1219,25 +1218,17 @@ function isVagueInput(input) {
  */
 function printCostReport(costs) {
   console.log();
-  console.log(chalk.bold('  户部账目 — 本朝会花费汇总'));
+  console.log(chalk.bold('  户部账目 — 本朝会 Token 消耗'));
   console.log(chalk.gray('  ─────────────────────────────────'));
 
   if (costs.sessions === 0) {
-    console.log(chalk.gray('  （尚无花费记录）'));
+    console.log(chalk.gray('  （尚无消耗记录）'));
   } else {
+    const total = costs.inputTokens + costs.outputTokens;
     console.log(`  ${chalk.white('旨意数:')}       ${chalk.cyan(costs.sessions)}`);
     console.log(`  ${chalk.white('输入 Token:')}   ${chalk.cyan(costs.inputTokens.toLocaleString())}`);
     console.log(`  ${chalk.white('输出 Token:')}   ${chalk.cyan(costs.outputTokens.toLocaleString())}`);
-    console.log(`  ${chalk.white('总花费:')}       ${chalk.yellow('$' + costs.totalUsd.toFixed(4))}`);
-
-    // 预算可视化
-    const budgetMax = 5.0;
-    const used = Math.min(costs.totalUsd / budgetMax, 1);
-    const barLen = 25;
-    const filled = Math.round(barLen * used);
-    const barColor = used < 0.5 ? chalk.green : used < 0.8 ? chalk.yellow : chalk.red;
-    const bar = barColor('█'.repeat(filled)) + chalk.gray('░'.repeat(barLen - filled));
-    console.log(`  ${chalk.white('预算:')}         ${bar} ${Math.round(used * 100)}%`);
+    console.log(`  ${chalk.white('合计:')}         ${chalk.yellow(total.toLocaleString() + ' tokens')}`);
   }
   console.log();
 }
