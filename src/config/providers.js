@@ -77,6 +77,21 @@ const PROVIDERS = {
     defaultModel: null,
     local: true
   },
+  uncommonroute: {
+    name: 'UncommonRoute (智能路由)',
+    baseUrl: 'http://localhost:8403/v1',
+    envKey: 'UNCOMMON_ROUTE_API_KEY',
+    models: [
+      'auto',
+      'anthropic/claude-sonnet-4-6',
+      'anthropic/claude-opus-4-6',
+      'openai/gpt-4o',
+      'deepseek/deepseek-chat',
+      'google/gemini-2.5-pro'
+    ],
+    defaultModel: 'auto',
+    local: true
+  },
   custom: {
     name: '自定义 (OpenAI 兼容)',
     baseUrl: null, // 用户自己输入

@@ -144,11 +144,68 @@ async function startRepl(options) {
     return chalk.yellow(`  ${name} ${icon} > `);
   }
 
+  // ── Tab 命令补全 ──
+  function completer(line) {
+    const commands = [
+      '/court', '/cost', '/regime', '/model', '/provider',
+      '/memory', '/viking', '/history', '/clear', '/help', '/exit',
+      '/dream', '/collab', '/oracle', '/pk', '/debate', '/exam',
+      '/rank', '/personality', '/treasure', '/autopsy',
+      '/auto-optimize', '/evolve-self', '/evolve', '/replay'
+    ];
+
+    const trimmed = line.trimStart();
+    if (!trimmed.startsWith('/')) return [[], line];
+
+    const parts = trimmed.split(/\s+/);
+    const cmd = parts[0];
+
+    // 还在输入命令名
+    if (parts.length === 1) {
+      const hits = commands.filter(c => c.startsWith(cmd));
+      return [hits.length ? hits : [], cmd];
+    }
+
+    // 补全参数
+    const lastWord = parts[parts.length - 1] || '';
+
+    // Agent ID 补全
+    if (['/pk', '/exam', '/personality', '/rank'].includes(cmd)) {
+      try {
+        const regime = require('../config/regimes').getRegime(currentRegime);
+        const ids = regime.agents.map(a => a.id);
+        if (cmd === '/pk' && lastWord.startsWith('-')) return [['--judge'], lastWord];
+        return [ids.filter(id => id.startsWith(lastWord)), lastWord];
+      } catch { return [[], lastWord]; }
+    }
+
+    if (cmd === '/regime') {
+      return [['ming', 'tang', 'modern'].filter(r => r.startsWith(lastWord)), lastWord];
+    }
+
+    if (cmd === '/model') {
+      try {
+        const { getProvider } = require('../config/providers');
+        const cfg = require('../config/index').loadConfig() || {};
+        const provider = getProvider(options.provider || cfg.provider || 'anthropic');
+        return [(provider?.models || []).filter(m => m.startsWith(lastWord)), lastWord];
+      } catch { return [[], lastWord]; }
+    }
+
+    if (cmd === '/provider') {
+      const ids = ['anthropic', 'openrouter', 'openai', 'deepseek', 'qwen', 'ollama', 'lmstudio', 'uncommonroute', 'custom'];
+      return [ids.filter(p => p.startsWith(lastWord)), lastWord];
+    }
+
+    return [[], lastWord];
+  }
+
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
     prompt: getPrompt(),
-    historySize: 100
+    historySize: 100,
+    completer
   });
 
   rl.prompt();
@@ -306,6 +363,17 @@ async function startRepl(options) {
           console.log(chalk.gray('\n  切换: /model <序号>  或  /model <模型名>'));
         } else {
           console.log(chalk.gray('  切换: /model <模型名>'));
+        }
+        // 显示其他 provider 的模型
+        const { listProviders: lp, getProvider: gp } = require('../config/providers');
+        const otherProviders = lp().filter(p => p.id !== providerId && p.modelCount > 0);
+        if (otherProviders.length > 0) {
+          console.log(chalk.bold('\n  其他 Provider 可用模型：\n'));
+          for (const op of otherProviders.slice(0, 4)) {
+            const opModels = (gp(op.id)?.models || []).slice(0, 3).join(', ');
+            console.log(`    ${chalk.gray(op.id.padEnd(16))} ${opModels}${gp(op.id)?.models?.length > 3 ? ' ...' : ''}`);
+          }
+          console.log(chalk.gray('\n  切换 Provider: /provider <名称>'));
         }
         console.log();
       }
@@ -510,13 +578,15 @@ async function startRepl(options) {
         i += 2;
       }
 
-      // 收集 contestant IDs（非引号包裹的参数）
-      while (i < parts.length && !parts[i].startsWith('"') && !parts[i].startsWith("'")) {
+      // 收集 contestant IDs（遇到引号开头的参数时停止）
+      const QUOTE_CHARS = '"\'"\u201c\u201d\u2018\u2019\u300c\u300d';
+      while (i < parts.length && !QUOTE_CHARS.includes(parts[i][0])) {
         contestants.push(parts[i]);
         i++;
       }
 
-      pkPrompt = parts.slice(i).join(' ').replace(/^["']|["']$/g, '');
+      // Strip surrounding quotes (ASCII + Unicode: "" '' \u201c\u201d \u2018\u2019 \u300c\u300d)
+      pkPrompt = parts.slice(i).join(' ').replace(/^[""''\u201c\u201d\u2018\u2019\u300c\u300d\u300e\u300f]+|[""''\u201c\u201d\u2018\u2019\u300c\u300d\u300e\u300f]+$/g, '');
 
       if (contestants.length < 2 || !pkPrompt) {
         console.log(chalk.yellow('\n  用法: /pk [--judge 主考官] <Agent1> <Agent2> "题目"'));
@@ -936,11 +1006,22 @@ async function startRepl(options) {
       return;
     }
 
-    // ── 自然语言命令路由 ──
-    const routed = routeNaturalLanguage(input);
-    if (routed) {
-      rl.emit('line', routed);
-      return;
+    // ── LLM 语义意图路由（tool-use 驱动，取代 regex 匹配） ──
+    {
+      const { routeIntent } = require('./intent-router');
+      const { Spinner } = require('./spinner');
+      const intentSpinner = new Spinner({ color: 'gray' });
+      intentSpinner.start('揣摩圣意...');
+      try {
+        const routed = await routeIntent(input, currentRegime);
+        intentSpinner.stop();
+        if (routed) {
+          rl.emit('line', routed);
+          return;
+        }
+      } catch {
+        intentSpinner.stop();
+      }
     }
 
     // ── 模糊输入引导（分制度语气） ──
@@ -1071,87 +1152,9 @@ async function startRepl(options) {
   rl.on('close', () => process.exit(0));
 }
 
-/**
- * 自然语言命令路由
- * 识别用户意图，自动映射到对应的 /command
- * @param {string} input
- * @returns {string|null} 映射后的命令，或 null（走正常旨意流程）
- */
-function routeNaturalLanguage(input) {
-  const lower = input.toLowerCase();
+// routeNaturalLanguage 已被 LLM 语义意图路由器取代
+// 详见 src/engine/intent-router.js
 
-  // PK / 对决 / 比赛
-  const pkMatch = input.match(/(?:让|叫|请)?(.+?)(?:和|与|vs|VS|跟|对战|比试|PK|pk)(.+?)(?:比一比|对决|比赛|竞赛|PK|pk)?[，,]?\s*(?:题目|任务|问题)?[：:]?\s*[「"']?(.+?)[」"']?\s*$/);
-  if (pkMatch) {
-    const a1 = pkMatch[1].trim();
-    const a2 = pkMatch[2].trim();
-    const task = pkMatch[3]?.trim();
-    if (a1 && a2 && task) return `/pk ${a1} ${a2} "${task}"`;
-  }
-  if (/(?:pk|PK|对决|比试|擂台).+/i.test(lower) && !lower.startsWith('/')) {
-    return null; // 有 PK 意图但格式不够明确，走正常流程
-  }
-
-  // 廷议 / 辩论 / 讨论
-  if (/^(?:大家)?(?:讨论|辩论|廷议|商议|议一议|聊一聊|分析一下)(?:一下)?[：:]?\s*(.+)/.test(input)) {
-    const topic = input.replace(/^(?:大家)?(?:讨论|辩论|廷议|商议|议一议|聊一聊|分析一下)(?:一下)?[：:]?\s*/, '').trim();
-    if (topic) return `/debate "${topic}"`;
-  }
-
-  // 科举 / 考试
-  if (/(?:考一考|测试一下|考核|科举)(.+)/.test(input)) {
-    const match = input.match(/(?:考一考|测试一下|考核|科举)\s*(.+)/);
-    if (match) return `/exam ${match[1].trim()}`;
-  }
-
-  // 排行 / 排名 / 功勋
-  if (/^(?:看看|查看)?(?:排行|排名|功勋|战绩|谁最厉害|谁最强)/.test(input)) {
-    return '/rank';
-  }
-
-  // 花了多少钱 / 费用
-  if (/(?:花了多少|费用|成本|多少钱|token|预算)/.test(lower)) {
-    return '/cost';
-  }
-
-  // 协同 / 一起
-  if (/^(?:大家一起|所有人|协同|联名|多人一起)(?:来)?(.+)/.test(input)) {
-    const task = input.replace(/^(?:大家一起|所有人|协同|联名|多人一起)(?:来)?/, '').trim();
-    if (task) return `/collab "${task}"`;
-  }
-
-  // 朝廷 / 架构 / 百官
-  if (/^(?:看看|查看)?(?:朝廷|架构|百官|大臣|谁在)/.test(input)) {
-    return '/court';
-  }
-
-  // 性格 / MBTI
-  if (/(?:性格|MBTI|mbti|星座|人格)/.test(input)) {
-    return '/personality';
-  }
-
-  // 寻宝
-  if (/(?:寻宝|宝藏|探索|treasure)/i.test(lower)) {
-    return '/treasure hunt';
-  }
-
-  // 退朝 / 退出 / 拜拜
-  if (/^(?:退朝|退出|再见|拜拜|bye|exit|quit)$/i.test(input)) {
-    return '/exit';
-  }
-
-  // 帮助 / 不会用
-  if (/^(?:帮助|help|怎么用|有什么功能|能干什么|不会用|不会|不知道怎么用|怎么操作|教我|指南|tutorial|how to use|你能做什么|你会什么|有哪些命令|什么命令|有啥功能|show commands|commands)$/i.test(input)) {
-    return '/help';
-  }
-
-  // 清屏
-  if (/^(?:清屏|clear)$/i.test(input)) {
-    return '/clear';
-  }
-
-  return null; // 不匹配任何命令模式，走正常的旨意执行流程
-}
 
 /**
  * 判断输入是否过于模糊（需要引导用户补充细节）

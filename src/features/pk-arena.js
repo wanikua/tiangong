@@ -96,7 +96,8 @@ async function runPK(params) {
 
       const result = await dispatcher.executePlan(plan);
       const firstResult = Object.values(result.results)[0];
-      const output = firstResult?.output?.content || '(无输出)';
+      const rawContent = firstResult?.output?.content;
+      const output = rawContent || (firstResult?.output?.rounds > 1 ? '(通过工具完成，无文字输出)' : '(无输出)');
 
       spinner.succeed(`${name} 答题完成`);
       results[agentId] = { output, success: true, name };
