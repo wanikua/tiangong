@@ -40,7 +40,8 @@ const MAX_MEMORIES_PER_AGENT = 500;
 const MAX_COURT_MEMORIES = 200;
 
 function validateId(id, label = 'ID') {
-  if (typeof id !== 'string' || !/^[a-zA-Z0-9_-]+$/.test(id)) {
+  // 允许中文/日文/韩文等 Unicode 字符，禁止路径穿越和特殊符号
+  if (typeof id !== 'string' || id.length === 0 || id.length > 64 || /[\/\\:*?"<>|.\s]/.test(id)) {
     throw new Error(`[太史局] 非法${label}: ${id}`);
   }
 }
