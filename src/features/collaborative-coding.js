@@ -29,6 +29,7 @@ const { loadConfig } = require('../config/setup');
 const { CostTracker } = require('../shangshu/hu/cost-tracker');
 const { Spinner } = require('../engine/spinner');
 const { reputationManager } = require('./reputation');
+const { bannerBox } = require('../utils/terminal');
 
 /**
  * 协同角色定义 — 按制度分别命名
@@ -138,9 +139,7 @@ async function runCollaborativeCoding(params) {
   const activeRoles = params.roles || ['architect', 'coder', 'security', 'tester', 'reviewer'];
 
   console.log();
-  console.log(chalk.yellow('  ╔══════════════════════════════════════════════════════╗'));
-  console.log(chalk.yellow('  ║') + chalk.bold.yellow('    📋  ' + ui.title + '  📋') + chalk.gray('    ' + ui.subtitle) + chalk.yellow('║'));
-  console.log(chalk.yellow('  ╚══════════════════════════════════════════════════════╝'));
+  console.log(bannerBox(chalk.bold.yellow('    📋  ' + ui.title + '  📋') + chalk.gray('    ' + ui.subtitle), { color: chalk.yellow }));
   console.log();
   const taskLabel = regimeId === 'modern' ? 'Task:' : '任务:';
   const teamLabel = regimeId === 'modern' ? 'Team:' : '参与:';

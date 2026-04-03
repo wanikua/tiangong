@@ -31,6 +31,7 @@ const { callLLM } = require('../shangshu/li/api-client');
 const { loadConfig } = require('../config/setup');
 const { Spinner } = require('../engine/spinner');
 const { createLogger } = require('../utils/logger');
+const { bannerBox } = require('../utils/terminal');
 const log = createLogger('optimizer');
 
 // ─── Prompt Overlay 存储路径 ─────────────────────────
@@ -334,9 +335,7 @@ function printOptimizationStatus() {
   const regime = getRegime(config.regime || 'ming');
 
   console.log();
-  console.log(chalk.yellow('  ╔══════════════════════════════════════════════════════╗'));
-  console.log(chalk.yellow('  ║') + chalk.bold.yellow('    🧬  自动 Prompt 优化状态  🧬') + '                      ' + chalk.yellow('║'));
-  console.log(chalk.yellow('  ╚══════════════════════════════════════════════════════╝'));
+  console.log(bannerBox(chalk.bold.yellow('    🧬  自动 Prompt 优化状态  🧬'), { color: chalk.yellow }));
   console.log();
 
   for (const agent of regime.agents) {

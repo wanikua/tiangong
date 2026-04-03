@@ -25,6 +25,7 @@ const { loadConfig } = require('../config/setup');
 const { CostTracker } = require('../shangshu/hu/cost-tracker');
 const { reputationManager } = require('./reputation');
 const { Spinner } = require('../engine/spinner');
+const { bannerBox } = require('../utils/terminal');
 
 // ─── 考题库 ─────────────────────────────────────────
 
@@ -116,9 +117,7 @@ async function runExam(params) {
   const costTracker = new CostTracker();
 
   console.log();
-  console.log(chalk.yellow('  ╔══════════════════════════════════════════════════════╗'));
-  console.log(chalk.yellow('  ║') + chalk.bold.yellow('    📝  科 举 考 试  📝') + chalk.gray('    Imperial Examination') + '     ' + chalk.yellow('║'));
-  console.log(chalk.yellow('  ╚══════════════════════════════════════════════════════╝'));
+  console.log(bannerBox(chalk.bold.yellow('    📝  科 举 考 试  📝') + chalk.gray('    Imperial Examination'), { color: chalk.yellow }));
   console.log();
   console.log(`  考生: ${chalk.cyan(agentId)}`);
   console.log(`  科目: ${subject ? chalk.white(subject) : chalk.white('全科')}`);

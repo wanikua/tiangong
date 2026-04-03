@@ -14,6 +14,7 @@
 const chalk = require('chalk');
 const { sessionRecorder } = require('./time-travel');
 const { memoryStore } = require('../memory/store');
+const { bannerBox } = require('../utils/terminal');
 
 /**
  * 故障分类
@@ -193,9 +194,7 @@ function printAutopsy(sessionIndex) {
   const report = generateAutopsy(session);
 
   console.log();
-  console.log(chalk.red('  ╔══════════════════════════════════════════════════════╗'));
-  console.log(chalk.red('  ║') + chalk.bold.red('    🔍  大理寺验尸报告  🔍') + '                            ' + chalk.red('║'));
-  console.log(chalk.red('  ╚══════════════════════════════════════════════════════╝'));
+  console.log(bannerBox(chalk.bold.red('    🔍  大理寺验尸报告  🔍'), { color: chalk.red }));
   console.log();
 
   console.log(`  ${chalk.white('旨意:')}   ${report.prompt}`);

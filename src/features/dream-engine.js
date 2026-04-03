@@ -29,6 +29,7 @@ const { memoryStore } = require('../memory/store');
 const { callLLM } = require('../shangshu/li/api-client');
 const { loadConfig } = require('../config/setup');
 const { Spinner } = require('../engine/spinner');
+const { bannerBox } = require('../utils/terminal');
 
 /**
  * 预感来源
@@ -73,9 +74,7 @@ async function runDreamEngine(params = {}) {
   const deep = params.deep || false;
 
   console.log();
-  console.log(chalk.magenta('  ╔══════════════════════════════════════════════════════╗'));
-  console.log(chalk.magenta('  ║') + chalk.bold.magenta('    🔮  朝 堂 梦 境  🔮') + chalk.gray('    Dream Engine') + '             ' + chalk.magenta('║'));
-  console.log(chalk.magenta('  ╚══════════════════════════════════════════════════════╝'));
+  console.log(bannerBox(chalk.bold.magenta('    🔮  朝 堂 梦 境  🔮') + chalk.gray('    Dream Engine'), { color: chalk.magenta }));
   console.log();
   console.log(chalk.gray('  太监总管正在揣摩圣意...\n'));
 

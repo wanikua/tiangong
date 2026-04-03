@@ -39,6 +39,7 @@ const { reputationManager } = require('./reputation');
 const { memoryStore } = require('../memory/store');
 const { execBash } = require('../shangshu/bing/bash');
 const { Spinner } = require('../engine/spinner');
+const { bannerBox } = require('../utils/terminal');
 
 // ─── 进化日志存储 ────────────────────────────────────
 
@@ -60,9 +61,7 @@ function ensureEvolutionDir() {
  */
 async function analyzeEvolutionOpportunities() {
   console.log();
-  console.log(chalk.red('  ╔══════════════════════════════════════════════════════╗'));
-  console.log(chalk.red('  ║') + chalk.bold.yellow('    🧬  自 进 化 引 擎  🧬') + chalk.gray('    Self-Evolution') + '       ' + chalk.red('║'));
-  console.log(chalk.red('  ╚══════════════════════════════════════════════════════╝'));
+  console.log(bannerBox(chalk.bold.yellow('    🧬  自 进 化 引 擎  🧬') + chalk.gray('    Self-Evolution'), { color: chalk.red }));
   console.log();
   console.log(chalk.gray('  分析系统运行数据，寻找进化机会...\n'));
 
@@ -483,9 +482,7 @@ function printEvolutionHistory() {
   const history = getEvolutionHistory();
 
   console.log();
-  console.log(chalk.yellow('  ╔══════════════════════════════════════════════════════╗'));
-  console.log(chalk.yellow('  ║') + chalk.bold.yellow('    🧬  进 化 历 史  🧬') + '                               ' + chalk.yellow('║'));
-  console.log(chalk.yellow('  ╚══════════════════════════════════════════════════════╝'));
+  console.log(bannerBox(chalk.bold.yellow('    🧬  进 化 历 史  🧬'), { color: chalk.yellow }));
   console.log();
 
   if (history.length === 0) {

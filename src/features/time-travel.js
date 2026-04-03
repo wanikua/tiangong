@@ -22,6 +22,7 @@ const path = require('path');
 const chalk = require('chalk');
 
 const { SESSION_DIR } = require('../config/index');
+const { bannerBox } = require('../utils/terminal');
 
 class SessionRecorder {
   constructor() {
@@ -154,9 +155,7 @@ class SessionRecorder {
     const sessions = this.listSessions(15);
 
     console.log();
-    console.log(chalk.yellow('  ╔══════════════════════════════════════════════════════╗'));
-    console.log(chalk.yellow('  ║') + chalk.bold.yellow('    📜  奏 折 归 档  📜') + chalk.gray('    Session Archive') + '         ' + chalk.yellow('║'));
-    console.log(chalk.yellow('  ╚══════════════════════════════════════════════════════╝'));
+    console.log(bannerBox(chalk.bold.yellow('    📜  奏 折 归 档  📜') + chalk.gray('    Session Archive'), { color: chalk.yellow }));
     console.log();
 
     if (sessions.length === 0) {
@@ -281,9 +280,7 @@ class SessionRecorder {
     }
 
     console.log();
-    console.log(chalk.yellow('  ╔══════════════════════════════════════════════════════╗'));
-    console.log(chalk.yellow('  ║') + chalk.bold.yellow('    📊  本 周 周 报  📊') + '                               ' + chalk.yellow('║'));
-    console.log(chalk.yellow('  ╚══════════════════════════════════════════════════════╝'));
+    console.log(bannerBox(chalk.bold.yellow('    📊  本 周 周 报  📊'), { color: chalk.yellow }));
     console.log();
     console.log(`  ${chalk.white('总旨意数:')}  ${chalk.cyan(totalSessions)}`);
     console.log(`  ${chalk.white('成功率:')}    ${totalSessions > 0 ? chalk.green(Math.round(successSessions / totalSessions * 100) + '%') : '-'}`);

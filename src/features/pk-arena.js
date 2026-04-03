@@ -23,14 +23,15 @@ const { getRegime } = require('../config/regimes');
 const { reputationManager } = require('./reputation');
 const { Spinner } = require('../engine/spinner');
 
+const { bannerBox } = require('../utils/terminal');
+
 /**
  * PK 结果展示
  */
-const PK_BANNER = () => `
-${chalk.red('  ╔══════════════════════════════════════════════════════╗')}
-${chalk.red('  ║')}    ${chalk.bold.yellow('⚔️  武 举 殿 试  ⚔️')}    ${chalk.gray('Agent PK Arena')}           ${chalk.red('║')}
-${chalk.red('  ╚══════════════════════════════════════════════════════╝')}
-`;
+const PK_BANNER = () => '\n' + bannerBox(
+  '    ' + chalk.bold.yellow('⚔️  武 举 殿 试  ⚔️') + '    ' + chalk.gray('Agent PK Arena'),
+  { color: chalk.red }
+) + '\n';
 
 /**
  * 运行 PK 对决

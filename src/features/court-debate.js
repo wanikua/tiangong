@@ -23,6 +23,7 @@ const { getRegime } = require('../config/regimes');
 const { loadConfig } = require('../config/setup');
 const { CostTracker } = require('../shangshu/hu/cost-tracker');
 const { Spinner } = require('../engine/spinner');
+const { bannerBox } = require('../utils/terminal');
 
 /**
  * 发言气泡样式（每个 Agent 不同颜色）
@@ -52,9 +53,7 @@ async function runDebate(params) {
 
   // ── Banner ──
   console.log();
-  console.log(chalk.yellow('  ╔══════════════════════════════════════════════════════╗'));
-  console.log(chalk.yellow('  ║') + chalk.bold.yellow('    📣  廷 议 开 始  📣') + chalk.gray('    Court Debate') + '              ' + chalk.yellow('║'));
-  console.log(chalk.yellow('  ╚══════════════════════════════════════════════════════╝'));
+  console.log(bannerBox(chalk.bold.yellow('    📣  廷 议 开 始  📣') + chalk.gray('    Court Debate'), { color: chalk.yellow }));
   console.log();
   console.log(chalk.white(`  议题: ${chalk.bold(topic)}`));
   console.log(chalk.white(`  轮次: ${rounds}`));

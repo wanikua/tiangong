@@ -36,6 +36,7 @@ const chalk = require('chalk');
 const crypto = require('crypto');
 
 const { HOME } = require('../config/index');
+const { bannerBox } = require('../utils/terminal');
 const TREASURE_DIR = path.join(HOME, 'treasure');
 const TREASURE_FILE = path.join(TREASURE_DIR, 'collection.json');
 
@@ -261,9 +262,7 @@ class TreasureManager {
     }
 
     console.log();
-    console.log(chalk.yellow('  ╔══════════════════════════════════════════════════════╗'));
-    console.log(chalk.yellow('  ║') + chalk.bold.yellow('    宝 藏 图 鉴') + chalk.gray('          Treasure Collection') + '    ' + chalk.yellow('║'));
-    console.log(chalk.yellow('  ╚══════════════════════════════════════════════════════╝'));
+    console.log(bannerBox(chalk.bold.yellow('    宝 藏 图 鉴') + chalk.gray('          Treasure Collection'), { color: chalk.yellow }));
     console.log();
 
     const collected = this.data.collected || {};

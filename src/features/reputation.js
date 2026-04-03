@@ -17,6 +17,7 @@
 const fs = require('fs');
 const path = require('path');
 const chalk = require('chalk');
+const { bannerBox } = require('../utils/terminal');
 
 // ─── 品阶定义 ─────────────────────────────────────────
 
@@ -243,9 +244,7 @@ class ReputationManager {
       .sort((a, b) => b.xp - a.xp);
 
     console.log();
-    console.log(chalk.yellow('  ╔══════════════════════════════════════════════════════╗'));
-    console.log(chalk.yellow('  ║') + chalk.bold.yellow('    🏆  功 勋 排 行 榜  🏆') + '                            ' + chalk.yellow('║'));
-    console.log(chalk.yellow('  ╚══════════════════════════════════════════════════════╝'));
+    console.log(bannerBox(chalk.bold.yellow('    🏆  功 勋 排 行 榜  🏆'), { color: chalk.yellow }));
     console.log();
 
     if (agents.length === 0) {

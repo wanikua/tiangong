@@ -28,6 +28,7 @@ const path = require('path');
 const chalk = require('chalk');
 
 const { HOME } = require('../config/index');
+const { bannerBox } = require('../utils/terminal');
 const PERSONALITY_DIR = path.join(HOME, 'personality');
 const PERSONALITY_FILE = path.join(PERSONALITY_DIR, 'agents.json');
 
@@ -238,9 +239,7 @@ ${zodiac.modifier}
     const regime = getRegime(regimeId);
 
     console.log();
-    console.log(chalk.yellow('  ╔══════════════════════════════════════════════════════╗'));
-    console.log(chalk.yellow('  ║') + chalk.bold.yellow('       百 官 性 格 档 案') + '                             ' + chalk.yellow('║'));
-    console.log(chalk.yellow('  ╚══════════════════════════════════════════════════════╝'));
+    console.log(bannerBox(chalk.bold.yellow('       百 官 性 格 档 案'), { color: chalk.yellow }));
     console.log();
 
     for (const agent of regime.agents) {

@@ -29,6 +29,7 @@ const { readFile } = require('../shangshu/bing/file-ops');
 const { execBash } = require('../shangshu/bing/bash');
 const { CostTracker } = require('../shangshu/hu/cost-tracker');
 const { Spinner } = require('../engine/spinner');
+const { bannerBox } = require('../utils/terminal');
 
 /**
  * 错误模式匹配
@@ -96,9 +97,7 @@ async function analyzeAndFix(params) {
   const costTracker = new CostTracker();
 
   console.log();
-  console.log(chalk.red('  ╔══════════════════════════════════════════════════════╗'));
-  console.log(chalk.red('  ║') + chalk.bold.yellow('    📜  天 书 降 世  📜') + chalk.gray('    Crash Oracle') + '             ' + chalk.red('║'));
-  console.log(chalk.red('  ╚══════════════════════════════════════════════════════╝'));
+  console.log(bannerBox(chalk.bold.yellow('    📜  天 书 降 世  📜') + chalk.gray('    Crash Oracle'), { color: chalk.red }));
   console.log();
 
   // ── 第一步：解析错误日志 ──

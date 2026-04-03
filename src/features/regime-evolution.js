@@ -25,6 +25,7 @@
 const chalk = require('chalk');
 const { sessionRecorder } = require('./time-travel');
 const { memoryStore } = require('../memory/store');
+const { bannerBox } = require('../utils/terminal');
 
 /**
  * 制度特长分析
@@ -67,9 +68,7 @@ function analyzeAndRecommend(params = {}) {
   const currentRegime = params.currentRegime || 'ming';
 
   console.log();
-  console.log(chalk.yellow('  ╔══════════════════════════════════════════════════════╗'));
-  console.log(chalk.yellow('  ║') + chalk.bold.yellow('    👑  朝代更迭分析  👑') + chalk.gray('    Regime Evolution') + '       ' + chalk.yellow('║'));
-  console.log(chalk.yellow('  ╚══════════════════════════════════════════════════════╝'));
+  console.log(bannerBox(chalk.bold.yellow('    👑  朝代更迭分析  👑') + chalk.gray('    Regime Evolution'), { color: chalk.yellow }));
   console.log();
   console.log(`  当前制度: ${chalk.cyan(REGIME_STRENGTHS[currentRegime]?.name || currentRegime)}`);
   console.log();
