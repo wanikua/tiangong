@@ -77,8 +77,24 @@ program
     console.log(chalk.bold('\n' + r.name + ' 架构：\n'));
     console.log(r.diagram);
     console.log(chalk.bold('\n百官名册：\n'));
-    for (const agent of r.agents) {
-      console.log('  ' + agent.emoji + ' ' + chalk.cyan(agent.name.padEnd(8)) + ' (' + agent.id + ') -- ' + agent.role);
+    let hasReputation = false;
+    try {
+      const { reputationManager } = require('../src/features/reputation');
+      for (const agent of r.agents) {
+        const rank = reputationManager.getRank(agent.id);
+        const agentData = reputationManager.getAgent(agent.id);
+        const streak = agentData.streak > 1 ? chalk.red(` 🔥${agentData.streak}`) : '';
+        const rankLabel = agentData.totalTasks > 0 ? ` ${rank.emoji}${chalk.gray(rank.title)}` : '';
+        console.log('  ' + agent.emoji + ' ' + chalk.cyan(agent.name.padEnd(8)) + ' (' + agent.id + ')' + rankLabel + streak + chalk.gray(' — ' + agent.role));
+        if (agentData.totalTasks > 0) hasReputation = true;
+      }
+    } catch {
+      for (const agent of r.agents) {
+        console.log('  ' + agent.emoji + ' ' + chalk.cyan(agent.name.padEnd(8)) + ' (' + agent.id + ') — ' + agent.role);
+      }
+    }
+    if (hasReputation) {
+      console.log(chalk.gray('\n  输入 /rank 查看详细功勋排行'));
     }
   });
 

@@ -282,6 +282,20 @@ async function startSession(prompt, options = {}) {
         }
       } catch (err) { log.debug('effect tick failed', err.message); }
 
+      // 功勋奖励 + 通知（让用户看到 agent 在成长）
+      try {
+        const { reputationManager } = require('../features/reputation');
+        const elapsed_ms = Date.now() - sessionStart;
+        const res = reputationManager.reward(chatAgent, 'task_complete');
+        if (elapsed_ms < 10000) reputationManager.reward(chatAgent, 'task_fast');
+        const rank = reputationManager.getRank(chatAgent);
+        // 升官时 _announcePromotion 已自动打印，这里只显示普通 XP 变化
+        if (!res.levelUp) {
+          const bar = chalk.green('█'.repeat(Math.round(10 * rank.progress))) + chalk.gray('░'.repeat(10 - Math.round(10 * rank.progress)));
+          console.log(chalk.gray(`  ${rank.emoji} ${chatAgent} +${res.xpGained}功勋 ${bar} ${rank.title} (${rank.xp}/${rank.nextRank ? rank.nextRank.xpRequired : '满'})`));
+        }
+      } catch (err) { log.debug('reputation reward failed', err.message); }
+
       const elapsed = formatDuration(Date.now() - sessionStart);
       console.log();
       console.log(chalk.gray('  ─────────────────────────────────────────────'));
@@ -458,6 +472,25 @@ async function startSession(prompt, options = {}) {
   }
 
   console.log(chalk.gray(`  预算: ${progressBar(cost.total.totalCostUsd, cost.budget.max, 20)}`));
+
+  // 功勋总结（多 Agent 路径 — dispatcher 已调过 reward，这里展示汇总）
+  try {
+    const { reputationManager } = require('../features/reputation');
+    const agentsSeen = new Set();
+    const xpLines = [];
+    for (const step of plan.steps) {
+      if (agentsSeen.has(step.agent)) continue;
+      agentsSeen.add(step.agent);
+      const rank = reputationManager.getRank(step.agent);
+      const agentData = reputationManager.getAgent(step.agent);
+      const streak = agentData.streak > 1 ? chalk.red(` 🔥${agentData.streak}连胜`) : '';
+      xpLines.push(`${rank.emoji} ${step.agent} ${chalk.white(rank.title)}${streak}`);
+    }
+    if (xpLines.length > 0) {
+      console.log(chalk.gray('  功勋: ') + xpLines.join(chalk.gray(' | ')));
+    }
+  } catch (err) { log.debug('reputation display failed', err.message); }
+
   console.log();
 
   // 多 Agent 路径也保存会话

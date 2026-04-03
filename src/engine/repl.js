@@ -27,6 +27,24 @@ function makeBanner(regimeId) {
   };
   const [icon, label] = regimeLabels[regimeId] || regimeLabels.ming;
 
+  // 时辰问候
+  const hour = new Date().getHours();
+  let timeGreeting = '';
+  if (regimeId === 'modern') {
+    if (hour < 6) timeGreeting = '🌙 Late night session';
+    else if (hour < 12) timeGreeting = '☀️ Good morning';
+    else if (hour < 18) timeGreeting = '🌤️ Good afternoon';
+    else timeGreeting = '🌙 Evening session';
+  } else {
+    if (hour < 6) timeGreeting = '🌙 夜深了，陛下还在批奏折';
+    else if (hour < 8) timeGreeting = '🌅 卯时早朝，百官觐见';
+    else if (hour < 12) timeGreeting = '☀️ 日出东方，万象更新';
+    else if (hour < 14) timeGreeting = '🍵 午时已到，陛下先用膳';
+    else if (hour < 18) timeGreeting = '📜 午后朝议，处理奏折';
+    else if (hour < 22) timeGreeting = '🏮 华灯初上，挑灯夜战';
+    else timeGreeting = '🌙 子时了，陛下保重龙体';
+  }
+
   // 随机古文慧根
   let wisdomLine = '';
   try {
@@ -47,7 +65,9 @@ ${chalk.yellow('  ║')}   ${chalk.gray('/viking 记忆文件    /clear  清屏'
 ${chalk.yellow('  ║')}   ${chalk.gray('/history 历史旨意   /help 帮助  /exit 退朝')}     ${chalk.yellow('║')}
 ${chalk.yellow('  ║')}                                                      ${chalk.yellow('║')}
 ${chalk.yellow('  ╚══════════════════════════════════════════════════════╝')}
-${wisdomLine ? '\n' + wisdomLine + '\n' : ''}`;
+${wisdomLine ? '\n' + wisdomLine : ''}
+${chalk.gray('  ' + timeGreeting)}
+`;
 }
 
 /**
@@ -90,12 +110,17 @@ async function startRepl(options) {
       console.log(chalk.gray('  Welcome! Try these:'));
       console.log(chalk.white('     Just type naturally: ') + chalk.cyan('"Build a login page"'));
       console.log(chalk.white('     Ask questions:       ') + chalk.cyan('"What is REST API?"'));
-      console.log(chalk.white('     Type /help for all commands'));
+      console.log(chalk.gray('     /dream  — AI predicts what you need next'));
+      console.log(chalk.gray('     /pk     — Pit agents against each other'));
+      console.log(chalk.gray('     /help   — See all commands'));
     } else {
       console.log(chalk.gray('  司礼监提示陛下：'));
       console.log(chalk.white('     直接说话即可：') + chalk.cyan('"帮朕写一个登录页面"'));
       console.log(chalk.white('     问问题也行：  ') + chalk.cyan('"什么是 REST API？"'));
-      console.log(chalk.white('     输入 /help 查看朝堂指令'));
+      console.log(chalk.gray('     /dream    — 朝堂梦境，AI 揣摩圣意'));
+      console.log(chalk.gray('     /pk       — 武举殿试，Agent 对决'));
+      console.log(chalk.gray('     /treasure — 寻宝奇缘，解锁隐藏能力'));
+      console.log(chalk.gray('     /help     — 查看全部朝堂指令'));
     }
     console.log();
   }
@@ -504,6 +529,7 @@ async function startRepl(options) {
       isProcessing = true;
       try {
         await runPK({ prompt: pkPrompt, contestants, judgeId, regimeId: currentRegime });
+        console.log(chalk.gray('  💡 想看谁升官了？试试 /rank | 想考考他们？试试 /exam ' + contestants[0]));
       } catch (err) {
         console.error(chalk.red(`\n  PK 执行失败: ${err.message}\n`));
       }
@@ -537,6 +563,7 @@ async function startRepl(options) {
       isProcessing = true;
       try {
         await runDebate({ topic, rounds, regimeId: currentRegime });
+        console.log(chalk.gray('  💡 意犹未尽？让他们 PK: /pk bingbu hubu "同一任务" | 看合拍度: /personality chemistry bingbu hubu'));
       } catch (err) {
         console.error(chalk.red(`\n  廷议失败: ${err.message}\n`));
       }
@@ -551,8 +578,10 @@ async function startRepl(options) {
 
       if (args) {
         reputationManager.printAgentDetail(args);
+        console.log(chalk.gray(`  💡 考考他: /exam ${args} | 看性格: /personality ${args} | 让他 PK: /pk ${args} hubu "任务"`));
       } else {
         reputationManager.printLeaderboard();
+        console.log(chalk.gray('  💡 点名看详情: /rank bingbu | 科举考核: /exam bingbu | 让他们 PK: /pk bingbu hubu "任务"'));
       }
       rl.prompt();
       return;
@@ -595,6 +624,9 @@ async function startRepl(options) {
             console.log(chalk.green(`  执行预感 #${actIndex + 1}: ${p.actionable || p.title}`));
             await startSession(p.actionable || p.title, { ...options, regime: currentRegime });
           }
+        }
+        if (premonitions && premonitions.length > 0 && !actMatch) {
+          console.log(chalk.gray('  💡 执行预感: /dream --act 1 | 看看谁能干: /rank | 寻宝: /treasure hunt'));
         }
       } catch (err) {
         console.error(chalk.red(`\n  梦境引擎失败: ${err.message}\n`));
@@ -783,6 +815,7 @@ async function startRepl(options) {
       isProcessing = true;
       try {
         await runExam({ agentId, subject, regimeId: currentRegime });
+        console.log(chalk.gray(`  💡 不服？让两个大臣 PK: /pk ${agentId} hubu "同一道题" | 查看性格: /personality ${agentId}`));
       } catch (err) {
         console.error(chalk.red(`\n  科举失败: ${err.message}\n`));
       }
@@ -973,9 +1006,62 @@ async function startRepl(options) {
       }
 
       history.push({ prompt: input, success: true, time: Date.now(), duration: Date.now() - startTime });
+
+      // 里程碑庆祝 + 解锁提示
+      const successCount = history.filter(h => h.success).length;
+      if (successCount === 1) {
+        console.log(chalk.yellow('  🎉 首道旨意完成！输入 /rank 查看大臣功勋榜'));
+      } else if (successCount === 5) {
+        console.log(chalk.yellow('  🎊 五道旨意！试试 /dream 让 AI 揣摩你下一步需要什么'));
+      } else if (successCount === 10) {
+        console.log(chalk.yellow('  ⚔️ 十道旨意！试试 /pk bingbu hubu "任务" 让大臣们对决'));
+      } else if (successCount === 20) {
+        console.log(chalk.yellow('  🏆 二十道旨意！输入 /rank 看看谁升官最快'));
+      }
+
+      // 随机朝堂事件 — 用叙事引导功能发现
+      if (successCount > 2 && successCount % 3 === 0 && ![5, 10, 20].includes(successCount)) {
+        const events = currentRegime === 'modern' ? [
+          { text: '📊 HR Report: Your agents have been growing. Check their progress.', cmd: '/rank' },
+          { text: '🔮 The AI forecaster has new predictions for you.', cmd: '/dream' },
+          { text: '⚡ Two engineers are arguing over the best approach...', cmd: '/debate "which is better"' },
+          { text: '🎯 Time for quarterly performance reviews!', cmd: '/exam engineer' },
+          { text: '🎁 There might be hidden power-ups waiting for you.', cmd: '/treasure hunt' },
+          { text: '📋 Your weekly report is ready to generate.', cmd: '/replay --weekly' },
+        ] : [
+          { text: '📣 太监来报：兵部与户部在朝堂争功！', cmd: '/pk bingbu hubu "写排序算法"' },
+          { text: '🔮 钦天监夜观星象，有所发现...', cmd: '/dream' },
+          { text: '📜 都察院奏请：科举选才，以正朝纲！', cmd: '/exam bingbu' },
+          { text: '💬 朝野热议：该用何等利器方为上策？', cmd: '/debate "React vs Vue"' },
+          { text: '🗺️ 有探子来报：发现一处藏宝洞穴！', cmd: '/treasure hunt' },
+          { text: '📊 太史局提醒：月底了，该写周报了。', cmd: '/replay --weekly' },
+          { text: '🏆 吏部呈上百官功勋录，请陛下过目。', cmd: '/rank' },
+          { text: '🎭 司礼监密奏：兵部性格档案已就绪。', cmd: '/personality bingbu' },
+          { text: '💀 大理寺呈报：上次案件验尸报告已出。', cmd: '/autopsy' },
+          { text: '🧠 翰林院进言：可让大臣自我精进。', cmd: '/evolve-self' },
+        ];
+        const event = events[Math.floor(Math.random() * events.length)];
+        console.log(chalk.yellow(`\n  ${event.text}`));
+        console.log(chalk.gray(`  → ${chalk.cyan(event.cmd)}`));
+      }
+
     } catch (err) {
       console.error(chalk.red(`\n  出错: ${err.message}\n`));
       history.push({ prompt: input, success: false, time: Date.now(), error: err.message });
+
+      // 失败时引导 — 把失败变成探索入口
+      const failCount = history.filter(h => !h.success).length;
+      if (failCount === 1) {
+        console.log(chalk.gray('  💡 大理寺可以帮你分析原因：/autopsy'));
+      } else if (failCount <= 3) {
+        const failTips = [
+          { cmd: '/oracle ' + err.message.slice(0, 30), desc: '天书降世 — 自动分析修复' },
+          { cmd: '/autopsy', desc: '大理寺验尸 — 分析故障根因' },
+          { cmd: '/evolve-self --prompt ' + 'bingbu', desc: '给大臣进修 — 优化 Agent 能力' },
+        ];
+        const tip = failTips[Math.floor(Math.random() * failTips.length)];
+        console.log(chalk.gray(`  💡 试试: ${chalk.cyan(tip.cmd)} — ${tip.desc}`));
+      }
     }
 
     isProcessing = false;
