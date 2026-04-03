@@ -250,8 +250,11 @@ function buildSummaryPrompt(topic, transcript, regimeId) {
 
 /** @private */
 function numToChinese(n) {
-  const map = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九', '十'];
-  return map[n] || n;
+  const d = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九', '十'];
+  if (n <= 10) return d[n] || n;
+  if (n < 20) return '十' + (n % 10 ? d[n % 10] : '');
+  if (n < 100) return d[Math.floor(n / 10)] + '十' + (n % 10 ? d[n % 10] : '');
+  return n;
 }
 
 module.exports = { runDebate };

@@ -44,9 +44,6 @@ const CONSTANTS = {
   MAX_L0_CHARS: 200,
   MAX_L1_CHARS: 4000,
 
-  // Budget
-  DEFAULT_MAX_BUDGET_USD: parseFloat(process.env.TIANGONG_MAX_BUDGET) || 5.0,
-
   // File ops
   MAX_FILE_SIZE: 10 * 1024 * 1024, // 10MB
 

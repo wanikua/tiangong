@@ -387,6 +387,8 @@ function evolveMemory() {
     if (kept.length < before) {
       const removed = before - kept.length;
       cleaned += removed;
+      // 写回清理后的记忆
+      try { memoryStore._saveAgentMemories(agentId, kept); } catch { /* ignore */ }
       console.log(chalk.gray(`    ${agentId}: 清理 ${removed} 条过期记忆 (${before} → ${kept.length})`));
     }
   }

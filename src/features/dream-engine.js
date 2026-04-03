@@ -374,7 +374,7 @@ async function checkCodeHealth(cwd) {
 
   // 大文件检查
   const bigFiles = await execBash(
-    `find "${cwd}" -name "*.js" -o -name "*.ts" -o -name "*.py" | xargs wc -l 2>/dev/null | sort -rn | head -5`,
+    `find "${cwd}" \\( -name "*.js" -o -name "*.ts" -o -name "*.py" \\) -type f ! -path "*/node_modules/*" ! -path "*/.git/*" ! -path "*/dist/*" 2>/dev/null | xargs wc -l 2>/dev/null | sort -rn | head -5`,
     { cwd }
   );
   if (bigFiles.stdout) {

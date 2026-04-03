@@ -322,14 +322,20 @@ class ReputationManager {
 
   /** @private 升官公告 */
   _announcePromotion(agentId, oldRank, newRank) {
+    const { bannerLine, displayWidth } = require('../utils/terminal');
+    const W = 36;
+    const line = (content) => {
+      const pad = Math.max(0, W - displayWidth(content));
+      return chalk.yellow('  │') + content + ' '.repeat(pad) + chalk.yellow('│');
+    };
     console.log();
-    console.log(chalk.yellow('  ┌──────────────────────────────────────┐'));
-    console.log(chalk.yellow('  │') + chalk.bold.red('  📣  升 官 啦 ！') + '                        ' + chalk.yellow('│'));
-    console.log(chalk.yellow('  │') + chalk.white(`  ${agentId}: ${oldRank.title} → ${chalk.bold(newRank.title)}`) + ' '.repeat(Math.max(0, 22 - agentId.length - newRank.title.length)) + chalk.yellow('│'));
+    console.log(chalk.yellow('  ┌' + '─'.repeat(W) + '┐'));
+    console.log(line(chalk.bold.red('  📣  升 官 啦 ！')));
+    console.log(line(chalk.white(`  ${agentId}: ${oldRank.title} → ${chalk.bold(newRank.title)}`)));
     if (newRank.bonus) {
-      console.log(chalk.yellow('  │') + chalk.gray(`  特权: ${newRank.bonus}`) + ' '.repeat(Math.max(0, 30 - newRank.bonus.length)) + chalk.yellow('│'));
+      console.log(line(chalk.gray(`  特权: ${newRank.bonus}`)));
     }
-    console.log(chalk.yellow('  └──────────────────────────────────────┘'));
+    console.log(chalk.yellow('  └' + '─'.repeat(W) + '┘'));
     console.log();
   }
 
