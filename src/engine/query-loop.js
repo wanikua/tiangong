@@ -132,17 +132,19 @@ async function startSession(prompt, options = {}) {
         // 最后回复尝试流式输出（非工具轮）
         if (useStreaming) {
           chatSpinner.stop();
-          // 输出框头
-          console.log(chalk.gray(`  ┌─ ${chatAgent} 回奏 ─────────────────────────────`));
-          process.stdout.write(chalk.gray('  │ '));
 
-          let lineBuffer = '';
+          let hasStreamContent = false;
           const streamResponse = await callLLMStreaming({
             model, providerId: options.provider, system: systemPrompt,
             messages, tools, maxTokens: 4096,
             _tiangong: { taskType: 'chat', agentId: chatAgent, isSimple: true }
           }, (text) => {
-            // 流式文本 delta → 实时输出
+            // 首次收到文本时才输出框头（避免空框）
+            if (!hasStreamContent) {
+              console.log(chalk.gray(`  ┌─ ${chatAgent} 回奏 ─────────────────────────────`));
+              process.stdout.write(chalk.gray('  │ '));
+              hasStreamContent = true;
+            }
             for (const ch of text) {
               if (ch === '\n') {
                 process.stdout.write('\n' + chalk.gray('  │ '));
@@ -150,12 +152,13 @@ async function startSession(prompt, options = {}) {
                 process.stdout.write(ch);
               }
             }
-            lineBuffer += text;
           });
 
           finalContent = streamResponse.content;
-          process.stdout.write('\n');
-          console.log(chalk.gray('  └──────────────────────────────────────────────'));
+          if (hasStreamContent) {
+            process.stdout.write('\n');
+            console.log(chalk.gray('  └──────────────────────────────────────────────'));
+          }
 
           // 如果流式回复里有工具调用，继续循环
           if (streamResponse.toolCalls?.length > 0) {
@@ -213,6 +216,7 @@ async function startSession(prompt, options = {}) {
         }
 
         // 执行每个工具并喂回结果
+        const toolResultEntries = [];
         for (const tc of response.toolCalls) {
           let toolResult;
           try {
@@ -222,11 +226,18 @@ async function startSession(prompt, options = {}) {
           }
           if (typeof toolResult !== 'string') toolResult = toolResult ? String(toolResult) : '(无结果)';
           if (toolResult.length > 50000) toolResult = toolResult.slice(0, 50000) + '\n... (截断)';
+          toolResultEntries.push({ id: tc.id, result: toolResult });
+        }
 
-          if (isAnthropic) {
-            messages.push({ role: 'user', content: [{ type: 'tool_result', tool_use_id: tc.id, content: toolResult }] });
-          } else {
-            messages.push({ role: 'tool', tool_call_id: tc.id, content: toolResult });
+        if (isAnthropic) {
+          // Anthropic: 所有 tool_result 合并到一条 user 消息
+          messages.push({
+            role: 'user',
+            content: toolResultEntries.map(e => ({ type: 'tool_result', tool_use_id: e.id, content: e.result }))
+          });
+        } else {
+          for (const e of toolResultEntries) {
+            messages.push({ role: 'tool', tool_call_id: e.id, content: e.result });
           }
         }
 

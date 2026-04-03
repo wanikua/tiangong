@@ -215,21 +215,23 @@ function toolCallToCommand(toolCall) {
 
   switch (name) {
     case 'cmd_pk': {
+      if (!p.agent1 || !p.agent2 || !p.topic) return null;
       const judge = p.judge ? `--judge ${p.judge} ` : '';
       return `/pk ${judge}${p.agent1} ${p.agent2} "${p.topic}"`;
     }
     case 'cmd_debate': {
+      if (!p.topic) return null;
       const rounds = p.rounds ? ` --rounds ${p.rounds}` : '';
       return `/debate "${p.topic}"${rounds}`;
     }
     case 'cmd_exam':
-      return `/exam ${p.agent}`;
+      return p.agent ? `/exam ${p.agent}` : null;
     case 'cmd_rank':
       return p.agent ? `/rank ${p.agent}` : '/rank';
     case 'cmd_cost':
       return '/cost';
     case 'cmd_collab':
-      return `/collab "${p.task}"`;
+      return p.task ? `/collab "${p.task}"` : null;
     case 'cmd_court':
       return '/court';
     case 'cmd_personality': {
@@ -241,7 +243,7 @@ function toolCallToCommand(toolCall) {
     case 'cmd_dream':
       return '/dream';
     case 'cmd_regime':
-      return `/regime ${p.regime}`;
+      return p.regime ? `/regime ${p.regime}` : null;
     case 'cmd_help':
       return '/help';
     case 'cmd_exit':

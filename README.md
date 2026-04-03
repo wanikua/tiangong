@@ -28,21 +28,23 @@ TianGong is a **self-evolving multi-agent AI framework** that maps China's ancie
 - **MBTI × Zodiac personality**: Each agent has unique personality traits that affect behavior
 - **Viral treasure hunt**: A gamified system that drives organic adoption
 
+## Quick Start
+
+```bash
+git clone https://github.com/wanikua/tiangong.git
+cd tiangong && npm install && npm link
+tiangong setup          # First-time config: choose provider + API key
+tiangong                # Enter interactive mode
+```
+
+**Update to latest version:**
+```bash
+cd ~/Documents/tiangong && git pull && npm link
+```
+
 ## Installation
 
 **Prerequisites**: [Node.js](https://nodejs.org) >= 22
-
-```bash
-# 1. Clone & install
-git clone https://github.com/wanikua/tiangong.git
-cd tiangong && npm install
-
-# 2. Register global command
-npm link
-
-# 3. Done! Now use it anywhere:
-tiangong
-```
 
 After `npm link`, just type `tiangong` in any terminal to enter interactive mode. Type your prompt directly — no flags needed, just like Claude Code.
 
@@ -143,6 +145,7 @@ Type these in the interactive prompt:
 | Qwen | Max, Plus, Turbo | No |
 | **Ollama** | Llama, Qwen, Mistral, etc. | **Yes** |
 | **LM Studio** | Any GGUF model | **Yes** |
+| **UncommonRoute** | Auto-select best model | **Yes** |
 
 ## Three Governance Systems
 
@@ -282,21 +285,23 @@ TianGong is an **independent, original implementation**. All code is original wo
 - **MBTI × 星座性格**：每个大臣有独特性格，影响回复风格和合拍度
 - **寻宝游戏**：病毒式传播机制——宝藏收集、谜语挑战、邀请码裂变
 
+## 快速开始
+
+```bash
+git clone https://github.com/wanikua/tiangong.git
+cd tiangong && npm install && npm link
+tiangong setup          # 首次配置：选择 Provider + API Key
+tiangong                # 进入交互模式
+```
+
+**更新到最新版：**
+```bash
+cd ~/Documents/tiangong && git pull && npm link
+```
+
 ## 安装
 
 **前置条件**: [Node.js](https://nodejs.org) >= 22
-
-```bash
-# 1. 安装
-git clone https://github.com/wanikua/tiangong.git
-cd tiangong && npm install
-
-# 2. 注册全局命令
-npm link
-
-# 3. 搞定！随时随地用：
-tiangong
-```
 
 `npm link` 之后，任意终端输入 `tiangong` 即进入交互模式。直接打字说话就行，像 Claude Code 一样简单。
 

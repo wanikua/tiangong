@@ -263,18 +263,25 @@ class Dispatcher {
       );
 
       // 喂回结果
-      for (const tr of toolResults) {
-        let toolResult = tr.result;
-        if (toolResult.length > CONSTANTS.MAX_OUTPUT_TRUNCATION) {
-          toolResult = toolResult.slice(0, CONSTANTS.MAX_OUTPUT_TRUNCATION) + '\n... (截断，结果过长)';
+      if (this.isAnthropic) {
+        // Anthropic: 所有 tool_result 合并到一条 user 消息（避免连续 user 消息报错）
+        const toolResultBlocks = [];
+        for (const tr of toolResults) {
+          let toolResult = tr.result;
+          if (toolResult.length > CONSTANTS.MAX_OUTPUT_TRUNCATION) {
+            toolResult = toolResult.slice(0, CONSTANTS.MAX_OUTPUT_TRUNCATION) + '\n... (截断，结果过长)';
+          }
+          toolResultBlocks.push({ type: 'tool_result', tool_use_id: tr.id, content: toolResult });
         }
-
-        const toolResultMsg = this._buildToolResult(tr.id, tr.name, toolResult);
-        if (this.isAnthropic) {
-          messages.push({ role: 'user', content: toolResultMsg });
-        } else {
-          // OpenAI 格式：_buildToolResult 已返回完整 message
-          messages.push(toolResultMsg);
+        messages.push({ role: 'user', content: toolResultBlocks });
+      } else {
+        // OpenAI: 每个 tool result 是独立消息
+        for (const tr of toolResults) {
+          let toolResult = tr.result;
+          if (toolResult.length > CONSTANTS.MAX_OUTPUT_TRUNCATION) {
+            toolResult = toolResult.slice(0, CONSTANTS.MAX_OUTPUT_TRUNCATION) + '\n... (截断，结果过长)';
+          }
+          messages.push({ role: 'tool', tool_call_id: tr.id, content: toolResult });
         }
       }
     }

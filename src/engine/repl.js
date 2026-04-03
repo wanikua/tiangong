@@ -19,6 +19,39 @@ const { version } = require('../../package.json');
 
 // ─── 美化 Banner ────────────────────────────────────────
 
+/**
+ * 计算字符串的终端显示宽度（CJK/emoji = 2列，其他 = 1列）
+ */
+function displayWidth(str) {
+  // 先去掉 ANSI escape codes
+  const clean = str.replace(/\x1b\[[0-9;]*m/g, '');
+  let w = 0;
+  for (const ch of clean) {
+    const code = ch.codePointAt(0);
+    if (
+      (code >= 0x1100 && code <= 0x115f) ||
+      (code >= 0x2e80 && code <= 0x9fff) ||
+      (code >= 0xac00 && code <= 0xd7af) ||
+      (code >= 0xf900 && code <= 0xfaff) ||
+      (code >= 0xfe30 && code <= 0xfe6f) ||
+      (code >= 0xff01 && code <= 0xff60) ||
+      (code >= 0x1f000 && code <= 0x1ffff) ||
+      (code >= 0x20000 && code <= 0x2ffff)
+    ) {
+      w += 2;
+    } else {
+      w += 1;
+    }
+  }
+  return w;
+}
+
+/** 生成 Banner 行：内容 + 右填充到固定宽度 + 右边框 */
+function bannerLine(content, innerWidth) {
+  const pad = Math.max(0, innerWidth - displayWidth(content));
+  return chalk.yellow('  ║') + content + ' '.repeat(pad) + chalk.yellow('║');
+}
+
 function makeBanner(regimeId) {
   const regimeLabels = {
     ming: ['🏮', '明朝内阁制'],
@@ -53,18 +86,21 @@ function makeBanner(regimeId) {
     wisdomLine = chalk.italic.gray(`  「${w.text}」—— ${w.source}`);
   } catch { /* ignore */ }
 
+  const W = 54; // 框内宽度（与 ═ 数量一致）
+  const border = '═'.repeat(W);
+
   return `
-${chalk.yellow('  ╔══════════════════════════════════════════════════════╗')}
-${chalk.yellow('  ║')}                                                      ${chalk.yellow('║')}
-${chalk.yellow('  ║')}   ${chalk.bold.yellow('天 工 开 物')} ${chalk.gray('v' + version)}    ${chalk.gray('by 菠萝菠菠')}            ${chalk.yellow('║')}
-${chalk.yellow('  ║')}   ${icon} ${chalk.white(label)}                                      ${chalk.yellow('║')}
-${chalk.yellow('  ║')}                                                      ${chalk.yellow('║')}
-${chalk.yellow('  ║')}   ${chalk.gray('/court  朝廷架构    /cost   户部账目')}           ${chalk.yellow('║')}
-${chalk.yellow('  ║')}   ${chalk.gray('/regime 制度切换    /model  模型切换')}           ${chalk.yellow('║')}
-${chalk.yellow('  ║')}   ${chalk.gray('/viking 记忆文件    /clear  清屏')}               ${chalk.yellow('║')}
-${chalk.yellow('  ║')}   ${chalk.gray('/history 历史旨意   /help 帮助  /exit 退朝')}     ${chalk.yellow('║')}
-${chalk.yellow('  ║')}                                                      ${chalk.yellow('║')}
-${chalk.yellow('  ╚══════════════════════════════════════════════════════╝')}
+${chalk.yellow('  ╔' + border + '╗')}
+${bannerLine('', W)}
+${bannerLine('   ' + chalk.bold.yellow('天 工 开 物') + ' ' + chalk.gray('v' + version) + '    ' + chalk.gray('by 菠萝菠菠'), W)}
+${bannerLine('   ' + icon + ' ' + chalk.white(label), W)}
+${bannerLine('', W)}
+${bannerLine('   ' + chalk.gray('/court  朝廷架构    /cost   户部账目'), W)}
+${bannerLine('   ' + chalk.gray('/regime 制度切换    /model  模型切换'), W)}
+${bannerLine('   ' + chalk.gray('/viking 记忆文件    /clear  清屏'), W)}
+${bannerLine('   ' + chalk.gray('/history 历史旨意   /help 帮助  /exit 退朝'), W)}
+${bannerLine('', W)}
+${chalk.yellow('  ╚' + border + '╝')}
 ${wisdomLine ? '\n' + wisdomLine : ''}
 ${chalk.gray('  ' + timeGreeting)}
 `;
