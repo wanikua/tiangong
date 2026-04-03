@@ -2,9 +2,8 @@
  * 朝廷班子导出系统
  *
  * 把训练好的 Agent 朝廷打包导出为：
- * 1. AgentPark 格式 — 上架到 Agent 劳务市场
- * 2. OpenClaw 格式 — 直接导入当皇上项目
- * 3. JSON 格式 — 通用格式
+ * 1. OpenClaw 格式 — 直接导入当皇上项目
+ * 2. JSON 格式 — 通用格式
  */
 
 const fs = require('fs');
@@ -14,7 +13,7 @@ const { getRegime } = require('../config/regimes');
 /**
  * 导出朝廷班子
  * @param {object} options
- * @param {string} options.format - 格式: agentpark | openclaw | json
+ * @param {string} options.format - 格式: openclaw | json
  * @param {string} options.output - 输出路径
  * @param {string} options.regime - 制度 ID
  */
@@ -25,9 +24,6 @@ async function exportCourt(options) {
   let exported;
 
   switch (format) {
-    case 'agentpark':
-      exported = exportAsAgentPark(regime);
-      break;
     case 'openclaw':
       exported = exportAsOpenClaw(regime);
       break;
@@ -42,67 +38,6 @@ async function exportCourt(options) {
   console.log(`✅ 已导出: ${outputPath} (${format} 格式)`);
   console.log(`   制度: ${regime.name}`);
   console.log(`   Agent 数: ${regime.agents.length}`);
-}
-
-/**
- * 导出为 AgentPark 格式
- * 适配 AgentPark 的 Agent Protocol 规范
- */
-function exportAsAgentPark(regime) {
-  return {
-    protocol: 'agent-park/v1',
-    type: 'agent-team',
-    metadata: {
-      name: `tiangong-${regime.id}`,
-      displayName: `天工 ${regime.name}`,
-      description: `${regime.description}。训练好的 AI 朝廷班子，可直接部署执行任务。`,
-      version: '0.1.0',
-      author: 'tiangong',
-      tags: ['multi-agent', 'chinese-governance', regime.id],
-      pricing: {
-        model: 'per-task',
-        tier: 'M'  // AgentPark S/M/L/XL 分级
-      }
-    },
-    capabilities: {
-      taskTypes: ['coding', 'review', 'devops', 'finance', 'marketing', 'management', 'legal', 'writing'],
-      maxConcurrentAgents: regime.agents.filter(a => a.layer === 'execution').length,
-      supportedModels: ['claude-sonnet-4-6', 'claude-opus-4-6', 'claude-haiku-4-5']
-    },
-    agents: regime.agents.map(a => ({
-      id: a.id,
-      name: a.name,
-      role: a.role,
-      layer: a.layer,
-      canCall: a.canCall,
-      // AgentPark Agent Protocol 字段
-      runtime: 'node',
-      entrypoint: `agents/${a.id}/handler.js`,
-      memory: {
-        type: 'persistent',
-        backend: 'sqlite'
-      },
-      sandbox: a.layer === 'execution' ? 'wasm' : 'none'
-    })),
-    flow: {
-      type: 'hierarchical',
-      layers: regime.layers,
-      pipeline: regime.flow,
-      canReject: regime.canReject || null
-    },
-    // AgentPark 特有：Agent 间通信协议
-    communication: {
-      protocol: 'json-rpc',
-      topics: [
-        'task.assigned',
-        'task.completed',
-        'task.failed',
-        'review.approved',
-        'review.rejected',
-        'budget.warning'
-      ]
-    }
-  };
 }
 
 /**
@@ -165,4 +100,4 @@ function exportAsJSON(regime) {
   };
 }
 
-module.exports = { exportCourt, exportAsAgentPark, exportAsOpenClaw, exportAsJSON };
+module.exports = { exportCourt, exportAsOpenClaw, exportAsJSON };

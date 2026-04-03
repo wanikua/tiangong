@@ -1,7 +1,7 @@
 /**
  * Agent 导入系统
  *
- * 从 AgentPark 或其他来源导入 Agent 到朝廷
+ * 从外部来源导入 Agent 到朝廷
  */
 
 const fs = require('fs');
@@ -9,7 +9,7 @@ const chalk = require('chalk');
 
 /**
  * 从外部来源导入 Agent
- * @param {string} source - 来源（文件路径 / AgentPark URL / npm 包名）
+ * @param {string} source - 来源（文件路径 / npm 包名）
  * @param {object} options
  */
 async function importAgent(source, options = {}) {
@@ -17,11 +17,6 @@ async function importAgent(source, options = {}) {
   if (fs.existsSync(source)) {
     const data = JSON.parse(fs.readFileSync(source, 'utf-8'));
     return importFromJSON(data);
-  }
-
-  // AgentPark URL
-  if (source.startsWith('agentpark://') || source.startsWith('https://agentpark.')) {
-    return importFromAgentPark(source);
   }
 
   // npm 包
@@ -32,19 +27,11 @@ async function importAgent(source, options = {}) {
   console.error(chalk.red(`无法识别来源: ${source}`));
   console.log('支持的格式:');
   console.log('  本地文件:   tiangong import ./exported-agents.json');
-  console.log('  AgentPark:  tiangong import agentpark://team/coding-squad');
   console.log('  npm 包:     tiangong import @tiangong/agent-bingbu');
 }
 
 /** @private */
 function importFromJSON(data) {
-  if (data.protocol === 'agent-park/v1') {
-    console.log(chalk.green(`导入 AgentPark 团队: ${data.metadata.displayName}`));
-    console.log(`Agent 数: ${data.agents.length}`);
-    // TODO: 注册到本地 Agent 池
-    return data.agents;
-  }
-
   if (data.format === 'tiangong/v1') {
     console.log(chalk.green(`导入天工班子: ${data.regime.name}`));
     console.log(`Agent 数: ${data.agents.length}`);
@@ -53,13 +40,6 @@ function importFromJSON(data) {
 
   console.log(chalk.yellow('未知格式，尝试直接导入 agents 字段'));
   return data.agents || [];
-}
-
-/** @private */
-async function importFromAgentPark(url) {
-  console.log(chalk.yellow(`从 AgentPark 导入: ${url}`));
-  console.log(chalk.gray('（AgentPark API 集成开发中）'));
-  // TODO: 调用 AgentPark API 获取 Agent 定义
 }
 
 /** @private */

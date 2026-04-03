@@ -7,7 +7,7 @@
  *   tiangong --regime ming "重构这个模块"
  *   tiangong --regime tang "审查这段代码"
  *   tiangong --regime modern "做一个市场分析"
- *   tiangong export --format agentpark
+ *   tiangong export --format openclaw
  */
 
 const { Command } = require('commander');
@@ -86,7 +86,7 @@ program
 program
   .command('export')
   .description('导出训练好的朝廷班子')
-  .option('-f, --format <type>', '格式: agentpark | openclaw | json', 'json')
+  .option('-f, --format <type>', '格式: openclaw | json', 'json')
   .option('-o, --output <path>', '输出路径')
   .argument('[regime]', '制度: ming | tang | modern')
   .action(async (regime, options) => {
@@ -96,10 +96,10 @@ program
     await exportCourt(options);
   });
 
-// 子命令：从 AgentPark 导入
+// 子命令：导入 Agent
 program
   .command('import <source>')
-  .description('从 AgentPark 导入 Agent')
+  .description('从外部来源导入 Agent')
   .action(async (source, options) => {
     const { importAgent } = require('../src/export/importer');
     await importAgent(source, options);

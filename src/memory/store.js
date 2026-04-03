@@ -372,10 +372,10 @@ class MemoryStore {
     return parts.join('\n');
   }
 
-  // ── 导出/导入（AgentPark 集成） ────────────────
+  // ── 导出/导入 ─────────────────────────────────
 
   /**
-   * 导出 Agent 的全部记忆（用于上架 AgentPark）
+   * 导出 Agent 的全部记忆
    * @param {string} agentId
    * @returns {object}
    */
