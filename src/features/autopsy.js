@@ -142,13 +142,15 @@ function generateAutopsy(session) {
 
   // 基于历史记忆的建议
   if (report.rootCause) {
-    const agentMemories = memoryStore.recallAgentMemory(report.rootCause.agent, {
-      type: 'mistake',
-      limit: 5
-    });
-    if (agentMemories.length > 0) {
-      report.recommendations.push(`${report.rootCause.agent} 历史教训: ${agentMemories[0].content}`);
-    }
+    try {
+      const agentMemories = memoryStore.recallAgentMemory(report.rootCause.agent, {
+        type: 'mistake',
+        limit: 5
+      });
+      if (agentMemories.length > 0) {
+        report.recommendations.push(`${report.rootCause.agent} 历史教训: ${agentMemories[0].content}`);
+      }
+    } catch { /* agent ID 可能是中文名，跳过记忆查询 */ }
   }
 
   return report;
