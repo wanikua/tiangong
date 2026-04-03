@@ -42,7 +42,8 @@ const { Spinner } = require('../engine/spinner');
 
 // ─── 进化日志存储 ────────────────────────────────────
 
-const EVOLUTION_DIR = path.join(process.env.HOME || '/tmp', '.tiangong', 'evolution');
+const { HOME } = require('../config/index');
+const EVOLUTION_DIR = path.join(HOME, 'evolution');
 const EVOLUTION_LOG = path.join(EVOLUTION_DIR, 'history.json');
 
 function ensureEvolutionDir() {

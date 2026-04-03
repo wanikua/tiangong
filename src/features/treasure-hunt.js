@@ -35,7 +35,8 @@ const path = require('path');
 const chalk = require('chalk');
 const crypto = require('crypto');
 
-const TREASURE_DIR = path.join(process.env.HOME || '/tmp', '.tiangong', 'treasure');
+const { HOME } = require('../config/index');
+const TREASURE_DIR = path.join(HOME, 'treasure');
 const TREASURE_FILE = path.join(TREASURE_DIR, 'collection.json');
 
 // ─── 宝藏定义 ─────────────────────────────────────────

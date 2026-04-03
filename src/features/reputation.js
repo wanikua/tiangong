@@ -66,7 +66,8 @@ const XP_PENALTIES = {
 
 // ─── 存储路径 ─────────────────────────────────────────
 
-const REPUTATION_DIR = path.join(process.env.HOME || '/tmp', '.tiangong', 'reputation');
+const { HOME } = require('../config/index');
+const REPUTATION_DIR = path.join(HOME, 'reputation');
 const REPUTATION_FILE = path.join(REPUTATION_DIR, 'agents.json');
 
 // ─── ReputationManager 类 ─────────────────────────────

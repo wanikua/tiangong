@@ -21,7 +21,9 @@ const { vikingStore } = require('../memory/viking-store');
 const { reputationManager } = require('../features/reputation');
 const { sessionRecorder } = require('../features/time-travel');
 
-const MAX_TOOL_ROUNDS = 30;
+const { loadConfig, CONSTANTS } = require('../config/index');
+const { createLogger } = require('../utils/logger');
+const log = createLogger('dispatcher');
 
 class Dispatcher {
   constructor(options = {}) {
@@ -33,7 +35,7 @@ class Dispatcher {
     this.cwd = options.cwd || process.cwd();
     this.verbose = options.verbose || false;
     // 检测当前 provider 是否是 Anthropic（影响消息格式）
-    const config = require('../config/setup').loadConfig() || {};
+    const config = loadConfig() || {};
     this.providerId = config.provider || 'anthropic';
     this.isAnthropic = this.providerId === 'anthropic';
   }
@@ -127,7 +129,7 @@ class Dispatcher {
     let finalContent = '';
 
     // 工具调用循环
-    for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
+    for (let round = 0; round < CONSTANTS.MAX_TOOL_ROUNDS; round++) {
       if (this.costTracker.isOverBudget()) {
         throw new Error('户部报告：已超预算，停止执行');
       }
@@ -137,7 +139,7 @@ class Dispatcher {
         system: systemPrompt,
         messages,
         tools,
-        maxTokens: 4096,
+        maxTokens: CONSTANTS.DEFAULT_MAX_TOKENS,
         _tiangong: {
           taskType: step.task,
           agentId: agentId,
@@ -198,8 +200,8 @@ class Dispatcher {
       // 喂回结果
       for (const tr of toolResults) {
         let toolResult = tr.result;
-        if (toolResult.length > 50000) {
-          toolResult = toolResult.slice(0, 50000) + '\n... (截断，结果过长)';
+        if (toolResult.length > CONSTANTS.MAX_OUTPUT_TRUNCATION) {
+          toolResult = toolResult.slice(0, CONSTANTS.MAX_OUTPUT_TRUNCATION) + '\n... (截断，结果过长)';
         }
 
         const toolResultMsg = this._buildToolResult(tr.id, tr.name, toolResult);
@@ -221,7 +223,7 @@ class Dispatcher {
         success: !!finalContent,
         toolCalls: messages.filter(m => m.role === 'assistant').length
       });
-    } catch { /* ignore viking errors */ }
+    } catch (err) { log.debug('Viking 自进化失败:', err.message); }
 
     return {
       agent: agentId,
@@ -250,7 +252,7 @@ class Dispatcher {
       if (vikingContext) {
         parts.push('\n' + vikingContext);
       }
-    } catch { /* viking store not available */ }
+    } catch (err) { log.debug('Viking 上下文加载失败:', err.message); }
 
     // 旧版记忆注入（兼容）
     const memoryPrompt = memoryStore.buildMemoryPrompt(agentId, {

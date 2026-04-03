@@ -25,7 +25,7 @@ function setAllowedRoots(roots) {
  * @param {string} filePath
  * @throws {Error} 如果路径非法
  */
-function validatePath(filePath) {
+function validatePath(filePath, { isWrite = false } = {}) {
   const resolved = path.resolve(filePath);
 
   // 阻止访问敏感路径
@@ -34,12 +34,11 @@ function validatePath(filePath) {
     throw new Error(`[刑部] 禁止访问系统敏感文件: ${resolved}`);
   }
 
-  // 阻止访问 SSH 私钥、环境变量文件等
+  // 阻止写入 SSH 私钥、环境变量文件等
   const basename = path.basename(resolved);
   const sensitivePatterns = ['.env', 'id_rsa', 'id_ed25519', '.pem', 'credentials.json'];
-  if (sensitivePatterns.some(p => basename === p || basename.startsWith('.env.'))) {
-    // 写入这些文件时阻止
-    // 读取允许（Agent 可能需要检查配置）
+  if (isWrite && sensitivePatterns.some(p => basename === p || basename.startsWith('.env.'))) {
+    throw new Error(`[刑部] 禁止写入敏感文件: ${basename}`);
   }
 
   // 路径中不能包含 .. 穿越
@@ -103,14 +102,7 @@ function readFile(filePath, options = {}) {
  * @param {string} content
  */
 function writeFile(filePath, content) {
-  validatePath(filePath);
-
-  // 阻止写入敏感文件
-  const basename = path.basename(filePath);
-  const forbiddenWrite = ['.env', 'id_rsa', 'id_ed25519', '.pem', 'credentials.json', '.ssh'];
-  if (forbiddenWrite.some(f => basename === f || basename.startsWith('.env.'))) {
-    throw new Error(`[刑部] 禁止写入敏感文件: ${basename}`);
-  }
+  validatePath(filePath, { isWrite: true });
 
   const dir = path.dirname(filePath);
   if (!fs.existsSync(dir)) {
@@ -128,7 +120,7 @@ function writeFile(filePath, content) {
  * @returns {{ replaced: number }}
  */
 function editFile(filePath, oldString, newString, replaceAll = false) {
-  validatePath(filePath);
+  validatePath(filePath, { isWrite: true });
 
   if (!fs.existsSync(filePath)) {
     throw new Error(`文件不存在: ${filePath}`);

@@ -848,7 +848,7 @@ async function startRepl(options) {
         console.log(chalk.yellow('\n  已重新随机分配所有大臣性格\n'));
         // 清空已有性格数据，下次访问时重新随机分配
         const fs = require('fs');
-        const pPath = require('path').join(process.env.HOME || '/tmp', '.tiangong', 'personality', 'agents.json');
+        const pPath = require('path').join(require('../config/index').HOME, 'personality', 'agents.json');
         try { fs.unlinkSync(pPath); } catch { /* ignore */ }
         // 重新加载
         const { PersonalityManager } = require('../features/agent-personality');

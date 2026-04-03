@@ -126,7 +126,7 @@ program
       config.model = name;
       const fs = require('fs');
       const path = require('path');
-      const configDir = path.join(process.env.HOME || '/tmp', '.tiangong');
+      const { HOME: configDir } = require('../src/config/index');
       const configPath = path.join(configDir, 'config.json');
       if (!fs.existsSync(configDir)) fs.mkdirSync(configDir, { recursive: true });
       fs.writeFileSync(configPath, JSON.stringify(config, null, 2), { mode: 0o600 });

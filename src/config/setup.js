@@ -15,8 +15,7 @@ const fs = require('fs');
 const path = require('path');
 const { PROVIDERS, listProviders, saveApiKey, getApiKey } = require('./providers');
 
-const CONFIG_DIR = path.join(process.env.HOME || '/tmp', '.tiangong');
-const CONFIG_PATH = path.join(CONFIG_DIR, 'config.json');
+const { HOME, CONFIG_PATH } = require('./index');
 
 // （ASCII art 已精简，登基动画改为简洁版）
 
@@ -291,8 +290,8 @@ async function runSetup() {
   rl.close();
 
   // 保存配置
-  if (!fs.existsSync(CONFIG_DIR)) {
-    fs.mkdirSync(CONFIG_DIR, { recursive: true });
+  if (!fs.existsSync(HOME)) {
+    fs.mkdirSync(HOME, { recursive: true });
   }
 
   const config = {
@@ -314,15 +313,10 @@ async function runSetup() {
 }
 
 /**
- * 加载已有配置
+ * 加载已有配置（委托给 config/index.js 单例）
  */
 function loadConfig() {
-  try {
-    if (fs.existsSync(CONFIG_PATH)) {
-      return JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf-8'));
-    }
-  } catch { /* ignore */ }
-  return null;
+  return require('./index').loadConfig();
 }
 
 module.exports = { needsSetup, runSetup, loadConfig, CONFIG_PATH };

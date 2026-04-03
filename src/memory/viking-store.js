@@ -22,11 +22,13 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { createLogger } = require('../utils/logger');
+
+const log = createLogger('viking');
 
 // ─── 配置 ────────────────────────────────────────────
 
-const VIKING_ROOT = process.env.TIANGONG_VIKING_DIR
-  || path.join(process.env.HOME || '/tmp', '.tiangong', 'viking');
+const { VIKING_DIR: VIKING_ROOT } = require('../config/index');
 
 const MAX_L0_CHARS = 200;   // L0 摘要最大字符数
 const MAX_L1_CHARS = 4000;  // L1 概览最大字符数
@@ -43,7 +45,12 @@ function resolveURI(uri) {
     throw new Error(`无效的 Viking URI: ${uri}（必须以 viking:// 开头）`);
   }
   const relativePath = uri.slice('viking://'.length);
-  return path.join(VIKING_ROOT, relativePath);
+  const localPath = path.join(VIKING_ROOT, relativePath);
+  const resolved = path.resolve(localPath);
+  if (!resolved.startsWith(path.resolve(VIKING_ROOT))) {
+    throw new Error(`[Viking] URI 路径越界: ${uri}`);
+  }
+  return localPath;
 }
 
 /**
@@ -76,6 +83,8 @@ function toURI(localPath) {
 
 class VikingStore {
   constructor() {
+    this._pendingWrites = new Map();
+    this._flushTimer = null;
     this._ensureDirs();
   }
 
@@ -475,17 +484,39 @@ class VikingStore {
 
   // ═══ 内部方法 ═══
 
+  /** @private 调度延迟批量回写 */
+  _scheduleFlush() {
+    if (this._flushTimer) return;
+    this._flushTimer = setTimeout(() => {
+      this._flushTimer = null;
+      this._flushPendingWrites();
+    }, 5000);
+    if (this._flushTimer.unref) this._flushTimer.unref();
+  }
+
+  /** @private 将待写入数据批量落盘 */
+  _flushPendingWrites() {
+    for (const [filePath, data] of this._pendingWrites) {
+      try {
+        fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+      } catch (err) {
+        log.debug(`viking flush write failed: ${err.message}`);
+      }
+    }
+    this._pendingWrites.clear();
+  }
+
   /** @private 读取条目到指定层级 */
   _readEntry(filePath, level = 2) {
     try {
       if (!fs.existsSync(filePath)) return null;
       const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
 
-      // 更新访问计数
+      // 更新访问计数（批量延迟回写，不阻塞读取）
       data.accessCount = (data.accessCount || 0) + 1;
       data.lastAccessedAt = new Date().toISOString();
-      // 异步回写（不阻塞）
-      try { fs.writeFileSync(filePath, JSON.stringify(data, null, 2)); } catch { /* ignore */ }
+      this._pendingWrites.set(filePath, data);
+      this._scheduleFlush();
 
       // 按层级返回
       const result = {

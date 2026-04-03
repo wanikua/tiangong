@@ -30,6 +30,8 @@ const { sessionRecorder } = require('./time-travel');
 const { callLLM } = require('../shangshu/li/api-client');
 const { loadConfig } = require('../config/setup');
 const { Spinner } = require('../engine/spinner');
+const { createLogger } = require('../utils/logger');
+const log = createLogger('optimizer');
 
 // ─── Prompt Overlay 存储路径 ─────────────────────────
 
@@ -148,6 +150,11 @@ async function optimizeAgentPrompt(agentId, options = {}) {
       messages: [{ role: 'user', content: optimizationPrompt }],
       maxTokens: 1024
     });
+
+    if (!response.content) {
+      log.warn(`优化器未收到有效响应`);
+      return null;
+    }
 
     const optimizedOverlay = response.content || '';
 

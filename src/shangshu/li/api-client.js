@@ -14,8 +14,10 @@
 const https = require('https');
 const http = require('http');
 const { URL } = require('url');
-const { loadConfig } = require('../../config/setup');
+const { loadConfig } = require('../../config/index');
 const { getProvider, getApiKey } = require('../../config/providers');
+const { createLogger } = require('../../utils/logger');
+const log = createLogger('api-client');
 
 // ── UncommonRoute 自动检测 ──────────────────────────────
 const UNCOMMON_ROUTE_URL = 'http://localhost:8403';
@@ -128,9 +130,10 @@ async function callLLM(params) {
   } catch (err) {
     const msg = err.message || '';
 
-    // 恢复 1: max_output_tokens → 升级到 64k 重试（最多 3 次）
-    if (msg.includes('max_output_tokens') || msg.includes('length') && maxRetries < 3) {
-      const biggerTokens = Math.min((params.maxTokens || 4096) * 4, 65536);
+    // Recovery 1: max_output_tokens → gradual increase (×1.5, ×2, ×3), capped at 16384
+    if ((msg.includes('max_output_tokens') || msg.includes('length')) && maxRetries < 3) {
+      const multiplier = [1.5, 2, 3][maxRetries] || 3;
+      const biggerTokens = Math.min(Math.ceil((params.maxTokens || 4096) * multiplier), 16384);
       return callLLM({ ...params, maxTokens: biggerTokens, _retryCount: maxRetries + 1 });
     }
 

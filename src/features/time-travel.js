@@ -21,7 +21,7 @@ const fs = require('fs');
 const path = require('path');
 const chalk = require('chalk');
 
-const SESSION_DIR = path.join(process.env.HOME || '/tmp', '.tiangong', 'sessions');
+const { SESSION_DIR } = require('../config/index');
 
 class SessionRecorder {
   constructor() {

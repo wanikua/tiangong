@@ -117,24 +117,15 @@ function getApiKey(providerId) {
   const provider = PROVIDERS[providerId];
   if (!provider) return null;
 
-  // 1. 环境变量
+  // 1. 环境变量优先
   if (process.env[provider.envKey]) {
     return process.env[provider.envKey];
   }
 
-  // 2. 配置文件
-  const fs = require('fs');
-  const path = require('path');
-  const configPath = path.join(process.env.HOME || '/tmp', '.tiangong', 'config.json');
-
-  try {
-    if (fs.existsSync(configPath)) {
-      const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-      return config.apiKeys?.[providerId] || null;
-    }
-  } catch { /* ignore */ }
-
-  return null;
+  // 2. 配置文件（走 config 单例缓存）
+  const { loadConfig } = require('./index');
+  const config = loadConfig();
+  return config?.apiKeys?.[providerId] || null;
 }
 
 /**
@@ -143,26 +134,11 @@ function getApiKey(providerId) {
  * @param {string} apiKey
  */
 function saveApiKey(providerId, apiKey) {
-  const fs = require('fs');
-  const path = require('path');
-  const configDir = path.join(process.env.HOME || '/tmp', '.tiangong');
-  const configPath = path.join(configDir, 'config.json');
-
-  if (!fs.existsSync(configDir)) {
-    fs.mkdirSync(configDir, { recursive: true });
-  }
-
-  let config = {};
-  try {
-    if (fs.existsSync(configPath)) {
-      config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-    }
-  } catch { /* ignore */ }
-
+  const { loadConfig, saveConfig } = require('./index');
+  const config = loadConfig() || {};
   if (!config.apiKeys) config.apiKeys = {};
   config.apiKeys[providerId] = apiKey;
-
-  fs.writeFileSync(configPath, JSON.stringify(config, null, 2), { mode: 0o600 });
+  saveConfig(config);
 }
 
 module.exports = { PROVIDERS, getProvider, listProviders, getApiKey, saveApiKey };

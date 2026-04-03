@@ -15,6 +15,8 @@ const { CostTracker } = require('../shangshu/hu/cost-tracker');
 const { loadConfig } = require('../config/setup');
 const { DEFAULT_REGIME, DEFAULT_MAX_BUDGET_USD } = require('../config/defaults');
 const { Spinner, progressBar, formatDuration } = require('./spinner');
+const { createLogger } = require('../utils/logger');
+const log = createLogger('query-loop');
 
 // 各制度的显示名称
 const REGIME_LABELS = {
@@ -109,11 +111,10 @@ async function startSession(prompt, options = {}) {
       for (let round = 0; round < MAX_ROUNDS; round++) {
         // 上下文压缩：messages 过多时保留首尾，丢弃中间
         if (messages.length > 20) {
-          const head = messages.slice(0, 1);       // 用户原始输入
-          const tail = messages.slice(-6);          // 最近 3 轮（6条消息）
-          const dropped = messages.length - 7;
-          messages.length = 0;
-          messages.push(...head, { role: 'user', content: `[系统：中间 ${dropped} 条消息已压缩，保留最近上下文]` }, ...tail);
+          const head = messages.slice(0, 1);       // first user message
+          const tail = messages.slice(-6);          // last 3 rounds
+          const dropped = messages.length - head.length - tail.length;
+          messages = [...head, { role: 'user', content: `[系统] 上下文已压缩，省略了 ${dropped} 条中间消息` }, ...tail];
         }
         // 最后回复尝试流式输出（非工具轮）
         if (useStreaming) {
@@ -244,7 +245,7 @@ async function startSession(prompt, options = {}) {
           const { playCelebration } = require('../features/treasure-animation');
           await playCelebration();
         }
-      } catch { /* ignore */ }
+      } catch (err) { log.debug('celebration effect check failed', err.message); }
 
       console.log();
       console.log(chalk.green(`  ${L.done}`));
@@ -258,7 +259,7 @@ async function startSession(prompt, options = {}) {
           const { playDropAnimation } = require('../features/treasure-animation');
           await playDropAnimation(surprise.rarity, surprise);
         }
-      } catch { /* ignore */ }
+      } catch (err) { log.debug('surprise drop check failed', err.message); }
 
       // 消耗一次性效果
       try {
@@ -266,7 +267,7 @@ async function startSession(prompt, options = {}) {
         for (const id of Object.keys(treasureManager.data.activeEffects || {})) {
           treasureManager.tickEffect(id);
         }
-      } catch { /* ignore */ }
+      } catch (err) { log.debug('effect tick failed', err.message); }
 
       const elapsed = formatDuration(Date.now() - sessionStart);
       console.log();
@@ -278,7 +279,7 @@ async function startSession(prompt, options = {}) {
       try {
         const { saveSession, generateSessionId } = require('./session-store');
         saveSession(generateSessionId(), { messages, prompt, model, regime: regimeId });
-      } catch { /* ignore */ }
+      } catch (err) { log.debug('session save failed', err.message); }
     } catch (err) {
       chatSpinner.fail('回复失败: ' + err.message);
     }

@@ -230,18 +230,20 @@ const TOOLS = [
     },
     execute: async (input, context) => {
       const dir = input.path || context.cwd;
-      // 优先用 rg，降级用 grep
+      // Shell-escape pattern and paths to prevent injection
+      const escapeShell = (s) => "'" + s.replace(/'/g, "'\\''") + "'";
+
       let cmd = `rg --no-heading -n`;
-      if (input.context_lines) cmd += ` -C ${input.context_lines}`;
-      cmd += ` "${input.pattern}" "${dir}"`;
-      if (input.glob) cmd += ` --glob "${input.glob}"`;
+      if (input.context_lines) cmd += ` -C ${parseInt(input.context_lines, 10) || 0}`;
+      cmd += ` -e ${escapeShell(input.pattern)} ${escapeShell(dir)}`;
+      if (input.glob) cmd += ` --glob ${escapeShell(input.glob)}`;
       cmd += ' 2>/dev/null | head -80';
 
       let result = await execBash(cmd, { cwd: context.cwd });
       if (!result.stdout) {
-        // 降级到 grep
-        let fallback = `grep -rn "${input.pattern}" "${dir}"`;
-        if (input.glob) fallback += ` --include="${input.glob}"`;
+        // fallback to grep
+        let fallback = `grep -rn -e ${escapeShell(input.pattern)} ${escapeShell(dir)}`;
+        if (input.glob) fallback += ` --include=${escapeShell(input.glob)}`;
         fallback += ' 2>/dev/null | head -80';
         result = await execBash(fallback, { cwd: context.cwd });
       }

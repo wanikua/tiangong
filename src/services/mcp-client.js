@@ -24,7 +24,7 @@ const fs = require('fs');
 const path = require('path');
 const chalk = require('chalk');
 
-const MCP_CONFIG = path.join(process.env.HOME || '/tmp', '.tiangong', 'mcp.json');
+const { MCP_CONFIG_PATH: MCP_CONFIG } = require('../config/index');
 
 class McpClient {
   constructor() {

@@ -7,8 +7,10 @@
 
 const fs = require('fs');
 const path = require('path');
-
-const SESSION_DIR = path.join(process.env.HOME || '/tmp', '.tiangong', 'sessions');
+const crypto = require('crypto');
+const { SESSION_DIR } = require('../config/index');
+const { createLogger } = require('../utils/logger');
+const log = createLogger('session-store');
 
 /**
  * 确保目录存在
@@ -57,7 +59,7 @@ function loadSession(sessionId) {
     const filePath = path.join(SESSION_DIR, `${sessionId}.json`);
     if (!fs.existsSync(filePath)) return null;
     return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-  } catch { return null; }
+  } catch (err) { log.warn('加载会话失败:', err.message); return null; }
 }
 
 /**
@@ -82,7 +84,7 @@ function listSessions(limit = 10) {
       .sort((a, b) => (b.savedAt || '').localeCompare(a.savedAt || ''))
       .slice(0, limit);
     return files;
-  } catch { return []; }
+  } catch (err) { log.warn('列出会话失败:', err.message); return []; }
 }
 
 /**
@@ -90,7 +92,7 @@ function listSessions(limit = 10) {
  * @returns {string}
  */
 function generateSessionId() {
-  return `s-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+  return `s-${Date.now().toString(36)}-${crypto.randomBytes(3).toString('hex')}`;
 }
 
 module.exports = { saveSession, loadSession, listSessions, generateSessionId };

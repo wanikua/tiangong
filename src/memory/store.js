@@ -32,13 +32,18 @@ const crypto = require('crypto');
 
 // ─── 配置 ────────────────────────────────────────────
 
-const MEMORY_ROOT = process.env.TIANGONG_MEMORY_DIR
-  || path.join(process.env.HOME || '/tmp', '.tiangong', 'memory');
+const { MEMORY_DIR: MEMORY_ROOT } = require('../config/index');
 
 const MEMORY_TYPES = ['skill', 'mistake', 'preference', 'decision', 'context'];
 
 const MAX_MEMORIES_PER_AGENT = 500;
 const MAX_COURT_MEMORIES = 200;
+
+function validateId(id, label = 'ID') {
+  if (typeof id !== 'string' || !/^[a-zA-Z0-9_-]+$/.test(id)) {
+    throw new Error(`[太史局] 非法${label}: ${id}`);
+  }
+}
 
 // ─── 确保目录存在 ────────────────────────────────────
 
@@ -109,6 +114,7 @@ class MemoryStore {
    * @returns {MemoryEntry}
    */
   saveAgentMemory(agentId, params) {
+    validateId(agentId, 'Agent ID');
     const memories = this._loadAgentMemories(agentId);
     const entry = createEntry({ ...params, source: agentId });
 
@@ -147,6 +153,7 @@ class MemoryStore {
    * @returns {MemoryEntry[]}
    */
   recallAgentMemory(agentId, query = {}) {
+    validateId(agentId, 'Agent ID');
     let memories = this._loadAgentMemories(agentId);
 
     // 筛选
@@ -194,6 +201,7 @@ class MemoryStore {
    * @returns {object}
    */
   getAgentMemorySummary(agentId) {
+    validateId(agentId, 'Agent ID');
     const memories = this._loadAgentMemories(agentId);
     const byType = {};
     for (const type of MEMORY_TYPES) {
@@ -380,6 +388,7 @@ class MemoryStore {
    * @returns {object}
    */
   exportAgentMemory(agentId) {
+    validateId(agentId, 'Agent ID');
     return {
       format: 'tiangong-memory/v1',
       agentId,
@@ -481,6 +490,7 @@ class MemoryStore {
    * @param {string} memoryId
    */
   forgetAgentMemory(agentId, memoryId) {
+    validateId(agentId, 'Agent ID');
     const memories = this._loadAgentMemories(agentId);
     const filtered = memories.filter(m => m.id !== memoryId);
     this._saveAgentMemories(agentId, filtered);
@@ -491,6 +501,7 @@ class MemoryStore {
    * @param {string} agentId
    */
   wipeAgentMemory(agentId) {
+    validateId(agentId, 'Agent ID');
     this._saveAgentMemories(agentId, []);
   }
 
@@ -498,12 +509,14 @@ class MemoryStore {
 
   /** @private 加载 Agent 记忆 */
   _loadAgentMemories(agentId) {
+    validateId(agentId, 'Agent ID');
     const filePath = path.join(MEMORY_ROOT, 'agents', `${agentId}.json`);
     return this._loadJSON(filePath);
   }
 
   /** @private 保存 Agent 记忆 */
   _saveAgentMemories(agentId, memories) {
+    validateId(agentId, 'Agent ID');
     const filePath = path.join(MEMORY_ROOT, 'agents', `${agentId}.json`);
     this._saveJSON(filePath, memories);
   }
@@ -530,6 +543,10 @@ class MemoryStore {
 
   /** @private */
   _loadJSON(filePath) {
+    const resolved = path.resolve(filePath);
+    if (!resolved.startsWith(path.resolve(MEMORY_ROOT))) {
+      throw new Error(`[太史局] 路径越界: ${filePath}`);
+    }
     try {
       if (fs.existsSync(filePath)) {
         return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
@@ -540,6 +557,10 @@ class MemoryStore {
 
   /** @private */
   _saveJSON(filePath, data) {
+    const resolved = path.resolve(filePath);
+    if (!resolved.startsWith(path.resolve(MEMORY_ROOT))) {
+      throw new Error(`[太史局] 路径越界: ${filePath}`);
+    }
     ensureDirs();
     fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
   }

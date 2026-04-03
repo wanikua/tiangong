@@ -27,7 +27,8 @@ const fs = require('fs');
 const path = require('path');
 const chalk = require('chalk');
 
-const PERSONALITY_DIR = path.join(process.env.HOME || '/tmp', '.tiangong', 'personality');
+const { HOME } = require('../config/index');
+const PERSONALITY_DIR = path.join(HOME, 'personality');
 const PERSONALITY_FILE = path.join(PERSONALITY_DIR, 'agents.json');
 
 // ─── MBTI 定义 ─────────────────────────────────────

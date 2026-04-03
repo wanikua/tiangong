@@ -18,7 +18,7 @@ const fs = require('fs');
 const path = require('path');
 const chalk = require('chalk');
 
-const PLUGIN_DIR = path.join(process.env.HOME || '/tmp', '.tiangong', 'plugins');
+const { PLUGIN_DIR } = require('../config/index');
 
 class PluginManager {
   constructor() {
