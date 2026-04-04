@@ -209,6 +209,10 @@ async function startRepl(options) {
     const lineWidth = displayWidth(rl.line || '');
     const cursorCol = promptWidth + lineWidth;
 
+    // 预留空行，防止终端底部无空间导致横排
+    process.stdout.write('\n'.repeat(hits.length));
+    process.stdout.write('\x1b[' + hits.length + 'A'); // 上移回到第一行
+
     for (const h of hits) {
       process.stdout.write('\x1b[1B');  // 下移一行
       process.stdout.write('\x1b[2K');  // 清除该行
@@ -352,7 +356,7 @@ async function startRepl(options) {
           const suffix = hits[0].cmd.slice(line.trimStart().length);
           rl.write(suffix);
         }
-        return;
+        return; // Tab 不走下面的 setImmediate
       }
 
       // Enter → 清掉候选
@@ -361,11 +365,21 @@ async function startRepl(options) {
         return;
       }
 
-      // 普通按键 → 更新候选列表
+      // 忽略非输入按键（方向键、Ctrl组合键、Meta等）
+      if (key && (key.ctrl || key.meta ||
+        ['up', 'down', 'left', 'right', 'escape'].includes(key.name))) {
+        return;
+      }
+
+      // 可打印字符/退格 → 更新候选列表
       setImmediate(() => {
         const line = rl.line || '';
         const hits = getHits(line);
-        drawSuggestions(hits);
+        if (hits.length > 0) {
+          drawSuggestions(hits);
+        } else {
+          clearSuggestions();
+        }
       });
     });
   }
