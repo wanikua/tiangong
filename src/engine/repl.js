@@ -247,6 +247,20 @@ async function startRepl(options) {
 
   rl.prompt();
 
+  // Ctrl+G 快捷键 → 打开编辑器
+  readline.emitKeypressEvents(process.stdin);
+  if (process.stdin.isTTY && !process.stdin.listenerCount('keypress')) {
+    readline.emitKeypressEvents(process.stdin);
+  }
+  if (process.stdin.isTTY) {
+    process.stdin.on('keypress', (ch, key) => {
+      if (key && key.ctrl && key.name === 'g' && !isProcessing) {
+        rl.write(null, { ctrl: true, name: 'u' }); // 清掉当前输入行
+        rl.emit('line', '/edit');
+      }
+    });
+  }
+
   rl.on('line', async (line) => {
     const input = line.trim();
     if (!input) { rl.prompt(); return; }
@@ -1058,6 +1072,12 @@ async function startRepl(options) {
         } else {
           // 关键：先解除 isProcessing，再走正常输入流程
           isProcessing = false;
+          console.log(chalk.gray('\n  ── 编辑内容 ──'));
+          const lines = content.trimEnd().split('\n');
+          for (const ln of lines) {
+            console.log(chalk.white('  │ ') + ln);
+          }
+          console.log(chalk.gray('  ────────────\n'));
           console.log(chalk.gray('\n  已提交编辑内容，开始处理...\n'));
           rl.emit('line', content);
           return;
