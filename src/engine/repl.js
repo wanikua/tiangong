@@ -181,15 +181,69 @@ async function startRepl(options) {
     return chalk.yellow(`  ${name} ${icon} > `);
   }
 
+  // ── Ghost Text 补全 + 快捷键 ──────────────────────────
+  let ghostText = ''; // 当前灰色建议文本
+
+  /**
+   * 根据当前输入计算 ghost 建议
+   */
+  function getGhost(line) {
+    const trimmed = line.trimStart();
+    if (!trimmed.startsWith('/')) return '';
+    const parts = trimmed.split(/\s+/);
+    if (parts.length !== 1) return ''; // 只在输入命令名阶段提示
+
+    const cmd = parts[0];
+    const hits = commands.filter(c => c.startsWith(cmd) && c !== cmd);
+    if (hits.length === 1) {
+      return hits[0].slice(cmd.length);
+    }
+    if (hits.length > 1) {
+      let common = hits[0];
+      for (let i = 1; i < hits.length; i++) {
+        while (!hits[i].startsWith(common)) {
+          common = common.slice(0, -1);
+        }
+      }
+      const suffix = common.slice(cmd.length);
+      return suffix.length > 0 ? suffix : '';
+    }
+    return '';
+  }
+
+  /**
+   * 清除 ghost text（用空格覆盖再移回光标）
+   */
+  function clearGhost() {
+    if (ghostText) {
+      const len = ghostText.length;
+      process.stdout.write(' '.repeat(len) + '\x1b[' + len + 'D');
+      ghostText = '';
+    }
+  }
+
+  /**
+   * 绘制 ghost text（灰色显示在光标后，然后光标移回）
+   */
+  function drawGhost(text) {
+    if (text) {
+      process.stdout.write('\x1b[90m' + text + '\x1b[0m' + '\x1b[' + text.length + 'D');
+      ghostText = text;
+    }
+  }
+
+  // ── 命令列表（Tab 补全 + ghost text 共用） ──
+  const commands = [
+    '/court', '/cost', '/regime', '/model', '/provider',
+    '/memory', '/viking', '/history', '/edit', '/clear', '/help', '/exit',
+    '/dream', '/collab', '/oracle', '/pk', '/debate', '/exam',
+    '/rank', '/personality', '/treasure', '/autopsy',
+    '/auto-optimize', '/evolve-self', '/evolve', '/replay'
+  ];
+
   // ── Tab 命令补全 ──
   function completer(line) {
-    const commands = [
-      '/court', '/cost', '/regime', '/model', '/provider',
-      '/memory', '/viking', '/history', '/edit', '/clear', '/help', '/exit',
-      '/dream', '/collab', '/oracle', '/pk', '/debate', '/exam',
-      '/rank', '/personality', '/treasure', '/autopsy',
-      '/auto-optimize', '/evolve-self', '/evolve', '/replay'
-    ];
+    // commands 使用上方共享数组
 
     const trimmed = line.trimStart();
     if (!trimmed.startsWith('/')) return [[], line];
@@ -247,17 +301,42 @@ async function startRepl(options) {
 
   rl.prompt();
 
-  // Ctrl+G 快捷键 → 打开编辑器
+  // ── Ghost Text + Ctrl+G ──
   readline.emitKeypressEvents(process.stdin);
   if (process.stdin.isTTY && !process.stdin.listenerCount('keypress')) {
     readline.emitKeypressEvents(process.stdin);
   }
   if (process.stdin.isTTY) {
     process.stdin.on('keypress', (ch, key) => {
+      // Ctrl+G → 编辑器
       if (key && key.ctrl && key.name === 'g' && !isProcessing) {
-        rl.write(null, { ctrl: true, name: 'u' }); // 清掉当前输入行
+        clearGhost();
+        rl.write(null, { ctrl: true, name: 'u' });
         rl.emit('line', '/edit');
+        return;
       }
+
+      // Tab → 接受 ghost text
+      if (key && key.name === 'tab' && ghostText) {
+        clearGhost();
+        rl.write(ghostText);
+        ghostText = '';
+        return;
+      }
+
+      // Enter → 清掉 ghost
+      if (key && key.name === 'return') {
+        clearGhost();
+        return;
+      }
+
+      // 普通按键 → 延迟 tick 让 readline 更新 rl.line，再画 ghost
+      setImmediate(() => {
+        clearGhost();
+        const line = rl.line || '';
+        const ghost = getGhost(line);
+        drawGhost(ghost);
+      });
     });
   }
 
