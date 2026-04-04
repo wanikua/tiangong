@@ -169,7 +169,8 @@ class SessionRecorder {
 
     for (const s of sessions) {
       const status = s.success === true ? chalk.green('✓') : s.success === false ? chalk.red('✗') : chalk.yellow('…');
-      const time = new Date(s.startedAt).toLocaleString().slice(0, -3);
+      const timestamp = s.startedAt || s.savedAt;
+      const time = timestamp ? new Date(timestamp).toLocaleString().slice(0, -3) : chalk.gray('?');
       const promptText = s.prompt || '(无)';
       const prompt = promptText.slice(0, 30) + (promptText.length > 30 ? '…' : '');
       const costTokens = s.cost?.total ? (s.cost.total.inputTokens || 0) + (s.cost.total.outputTokens || 0) : 0;
@@ -200,12 +201,13 @@ class SessionRecorder {
     console.log(`  ${chalk.white('旨意:')}   ${chalk.bold(session.prompt)}`);
     console.log(`  ${chalk.white('制度:')}   ${session.regime}`);
     console.log(`  ${chalk.white('模型:')}   ${session.model}`);
-    console.log(`  ${chalk.white('时间:')}   ${new Date(session.startedAt).toLocaleString()}`);
+    const replayTimestamp = session.startedAt || session.savedAt;
+    console.log(`  ${chalk.white('时间:')}   ${replayTimestamp ? new Date(replayTimestamp).toLocaleString() : '(未知)'}`);
     console.log(`  ${chalk.white('状态:')}   ${session.success === true ? chalk.green('成功') : session.success === false ? chalk.red('失败') : chalk.yellow('进行中')}`);
-    console.log(`  ${chalk.white('目录:')}   ${chalk.gray(session.cwd)}`);
+    if (session.cwd) console.log(`  ${chalk.white('目录:')}   ${chalk.gray(session.cwd)}`);
 
     // 步骤回放
-    if (session.steps.length > 0) {
+    if (session.steps && session.steps.length > 0) {
       console.log(chalk.bold('\n  执行步骤:'));
       for (const step of session.steps) {
         const icon = step.type === 'step_complete' ? chalk.green('✓')
@@ -216,7 +218,7 @@ class SessionRecorder {
     }
 
     // 工具调用
-    if (session.toolCalls.length > 0) {
+    if (session.toolCalls && session.toolCalls.length > 0) {
       console.log(chalk.bold('\n  工具调用:'));
       for (const tc of session.toolCalls.slice(0, 20)) {
         console.log(chalk.gray(`    🔧 [${tc.agent}] ${tc.tool}(${JSON.stringify(tc.input || {}).slice(0, 60)})`));
@@ -226,10 +228,18 @@ class SessionRecorder {
       }
     }
 
-    // 输出
-    if (session.outputs.length > 0) {
+    // 输出（兼容新旧格式：新格式有 messages 而非 outputs）
+    const outputs = session.outputs || [];
+    if (outputs.length === 0 && session.messages) {
+      for (const m of session.messages) {
+        if (m.role === 'assistant' && m.content) {
+          outputs.push({ agent: '(assistant)', content: m.content });
+        }
+      }
+    }
+    if (outputs.length > 0) {
       console.log(chalk.bold('\n  输出:'));
-      for (const out of session.outputs) {
+      for (const out of outputs) {
         console.log(chalk.gray(`  ┌─ ${out.agent || '未知'} ─────────────`));
         const lines = (out.content || '').split('\n').slice(0, 15);
         for (const line of lines) {
@@ -255,7 +265,10 @@ class SessionRecorder {
   generateWeeklyReport() {
     const oneWeekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
     const sessions = this.listSessions(100)
-      .filter(s => new Date(s.startedAt).getTime() > oneWeekAgo);
+      .filter(s => {
+        const ts = s.startedAt || s.savedAt;
+        return ts && new Date(ts).getTime() > oneWeekAgo;
+      });
 
     const totalSessions = sessions.length;
     const successSessions = sessions.filter(s => s.success).length;

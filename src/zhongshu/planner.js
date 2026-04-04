@@ -18,6 +18,9 @@ const log = createLogger('planner');
 
 // ─── 简单对话识别（L0 快速路由）─────────────────────
 
+// 祈使句检测正则
+const IMPERATIVE = /^(帮|请|麻烦|给我|替我|为我|需要你|你来|你去|开始|立刻|马上)?.{0,4}(写|编|实现|开发|创建|重构|修复|部署|发布|搭建|生成|做|改|删|加|添加|移除|执行|运行|启动|构建|设计|优化|迁移|升级|配置|安装|测试)/;
+
 /**
  * 判断是否走快速路径（单 Agent + 工具，像 Claude Code）
  *
@@ -32,7 +35,6 @@ function isSimpleChat(prompt) {
   const trimmed = prompt.trim();
 
   // 非祈使句 → 快速路径
-  const IMPERATIVE = /^(帮|请|麻烦|给我|替我|为我|需要你|你来|你去|开始|立刻|马上)?.{0,4}(写|编|实现|开发|创建|重构|修复|部署|发布|搭建|生成|做|改|删|加|添加|移除|执行|运行|启动|构建|设计|优化|迁移|升级|配置|安装|测试)/;
   if (!IMPERATIVE.test(trimmed)) {
     return true;
   }
@@ -47,10 +49,35 @@ function isSimpleChat(prompt) {
   return false;
 }
 
+/**
+ * 为快速路径选择最合适的 Agent
+ *
+ * 关键改进：单领域祈使任务分派给领域专家（如 bingbu），而非调度员（silijian）
+ * 非祈使句（问答/闲聊）仍由 planning 层 Agent 处理
+ */
+function pickFastPathAgent(prompt, regimeId, regime) {
+  const trimmed = prompt.trim();
+
+  // 祈使句 → 找领域专家
+  if (IMPERATIVE.test(trimmed)) {
+    const agentMap = TASK_AGENT_MAP[regimeId] || TASK_AGENT_MAP.ming;
+    // 使用 analyzeIntent 做领域匹配（它有 fallback 到 coding 的兜底逻辑）
+    const matched = analyzeIntent(trimmed);
+    const agentId = agentMap[matched[0]];
+    if (agentId && regime.agents.find(a => a.id === agentId)) {
+      return agentId;
+    }
+  }
+
+  // 非祈使句 / 无匹配域 → planning 层 Agent
+  const plannerAgent = regime.agents.find(a => a.layer === 'planning' && a.canCall.length > 0);
+  return plannerAgent ? plannerAgent.id : regime.agents[0].id;
+}
+
 // ─── 任务类型识别（正则，用于 fallback + L1 辅助）────
 
 const TASK_PATTERNS = {
-  coding: /写(代码|函数|方法|脚本|程序|接口|组件|模块|页面|工具)|编(程|写|码)|实现|开发|创建|重构|修复|bug|代码|function|class|api|接口|组件/i,
+  coding: /写(代码|函数|方法|脚本|程序|接口|组件|模块|页面|工具|一个|个)|编(程|写|码)|实现|开发|创建|重构|修复|bug|代码|算法|排序|function|class|api|接口|组件|爬虫|登录|注册|服务器|server|http|数据库/i,
   review: /审查|review|检查|评审|安全/i,
   devops: /部署|运维|docker|ci|cd|发布|服务器|监控/i,
   finance: /财务|预算|成本|分析|数据|报表|报告/i,
@@ -150,11 +177,12 @@ ${agentList}
 
 ## 规则
 1. 每个 step 必须有: agent(从上面选), task(任务类型), description(具体描述，告诉 agent 要做什么)
-2. 简单任务（1个 agent 能完成的）只需 1 个 step
-3. 复杂任务要拆成多步，用 dependencies 表示先后顺序
-4. coding 或 devops 任务结束后要加 review 步骤
-5. 第一个 step 通常是 planning 层的 agent 做需求分析
-6. description 要具体！不要写"执行任务"，要写"读取 src/auth.js，找到登录函数，修复 token 过期不刷新的问题"
+2. **agent 字段必须使用上面列出的英文 ID（如 bingbu, gongbu, hubu），绝对不要使用中文名称（如 兵部、工部）**
+3. 简单任务（1个 agent 能完成的）只需 1 个 step
+4. 复杂任务要拆成多步，用 dependencies 表示先后顺序
+5. coding 或 devops 任务结束后要加 review 步骤
+6. 第一个 step 通常是 planning 层的 agent 做需求分析
+7. description 要具体！不要写"执行任务"，要写"读取 src/auth.js，找到登录函数，修复 token 过期不刷新的问题"
 
 ## 输出格式（严格 JSON）
 \`\`\`json
@@ -241,9 +269,9 @@ ${agentList}
 async function generatePlan(prompt, regimeId = 'ming', options = {}) {
   const regime = getRegime(regimeId);
 
-  // ── L0: 简单对话 → 快速直答 ──
+  // ── L0: 简单对话 / 单领域任务 → 快速路径 ──
   if (!options.forceLLM && isSimpleChat(prompt)) {
-    const plannerAgent = regime.agents.find(a => a.layer === 'planning' && a.canCall.length > 0);
+    const agentId = pickFastPathAgent(prompt, regimeId, regime);
     return {
       prompt,
       regime: regimeId,
@@ -251,7 +279,7 @@ async function generatePlan(prompt, regimeId = 'ming', options = {}) {
       planMethod: 'fast',
       steps: [{
         id: 1,
-        agent: plannerAgent ? plannerAgent.id : regime.agents[0].id,
+        agent: agentId,
         task: 'chat',
         description: '直接回答',
         input: prompt

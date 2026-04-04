@@ -49,7 +49,7 @@
     "jest": "^30.3.0"
   },
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=18.14.0"
   },
   "repository": {
     "type": "git",

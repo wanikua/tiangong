@@ -26,7 +26,7 @@ program
   .version(version)
   .option('-r, --regime <type>', '制度选择: ming | tang | modern')
   .option('-m, --model <model>', '模型覆盖')
-  .option('-p, --provider <type>', '提供商: anthropic | openrouter | openai | deepseek')
+  .option('-p, --provider <type>', '提供商: anthropic | openrouter | openai | deepseek | qwen | ollama | lmstudio')
   .option('--verbose', '详细输出')
   .option('--dry-run', '只显示执行计划，不实际执行')
   .argument('[prompt...]', '给朝廷的旨意')
@@ -46,6 +46,17 @@ program
       await startRepl(options);
       return;
     }
+
+    // ── 单次模式：先进行意图路由（自然语言 → /command）──
+    try {
+      const { routeIntent } = require('../src/engine/intent-router');
+      const regimeId = options.regime || 'ming';
+      const routed = await routeIntent(prompt, regimeId);
+      if (routed) {
+        const handled = await executeFeatureCommand(routed, regimeId, options);
+        if (handled) return;
+      }
+    } catch { /* intent routing failed, fall through */ }
 
     // 单次执行模式
     await startSession(prompt, options);
@@ -279,6 +290,107 @@ program
       console.log();
     }
   });
+
+/**
+ * 单次模式下执行 feature 命令（/pk, /debate, /exam, /rank, /cost, /court 等）
+ * @param {string} command - 路由后的 /command 字符串
+ * @param {string} regimeId
+ * @param {object} options
+ * @returns {Promise<boolean>} 是否成功处理
+ */
+async function executeFeatureCommand(command, regimeId, options) {
+  const parts = command.trim().split(/\s+/);
+  const cmd = parts[0];
+
+  try {
+    switch (cmd) {
+      case '/pk': {
+        const { runPK } = require('../src/features/pk-arena');
+        const args = command.replace(/^\/pk\s*/, '').trim();
+        const tokens = args.split(/\s+/);
+        let judgeId = null, contestants = [], i = 0;
+        if (tokens[i] === '--judge' && tokens[i + 1]) { judgeId = tokens[i + 1]; i += 2; }
+        const QUOTE_CHARS = '"\'"\u201c\u201d\u2018\u2019\u300c\u300d';
+        while (i < tokens.length && !QUOTE_CHARS.includes(tokens[i][0])) { contestants.push(tokens[i]); i++; }
+        const pkPrompt = tokens.slice(i).join(' ').replace(/^[""''\u201c\u201d\u2018\u2019\u300c\u300d]+|[""''\u201c\u201d\u2018\u2019\u300c\u300d]+$/g, '');
+        if (contestants.length < 2 || !pkPrompt) return false;
+        await runPK({ prompt: pkPrompt, contestants, judgeId, regimeId });
+        return true;
+      }
+      case '/debate': {
+        const { runDebate } = require('../src/features/court-debate');
+        const args = command.replace(/^\/debate\s*/, '').trim();
+        let rounds = 2, topic = args;
+        const roundsMatch = args.match(/--rounds?\s+(\d+)/);
+        if (roundsMatch) { rounds = parseInt(roundsMatch[1]); topic = args.replace(/--rounds?\s+\d+/, '').trim(); }
+        topic = topic.replace(/^["'"]+|["'"]+$/g, '');
+        if (!topic) return false;
+        await runDebate({ topic, rounds, regimeId });
+        return true;
+      }
+      case '/exam': {
+        const { runExam } = require('../src/features/imperial-exam');
+        const agentId = parts[1];
+        if (!agentId) return false;
+        await runExam({ agentId, regimeId });
+        return true;
+      }
+      case '/collab': {
+        const { runCollaborativeCoding } = require('../src/features/collaborative-coding');
+        const task = command.replace(/^\/collab\s*/, '').trim().replace(/^["'"]+|["'"]+$/g, '');
+        if (!task) return false;
+        await runCollaborativeCoding({ task, regimeId });
+        return true;
+      }
+      case '/rank': {
+        const { reputationManager } = require('../src/features/reputation');
+        parts[1] ? reputationManager.printAgentDetail(parts[1]) : reputationManager.printLeaderboard();
+        return true;
+      }
+      case '/cost':
+        console.log(chalk.gray('\n  /cost 仅在交互模式下可用（会话内累计费用）\n'));
+        return true;
+      case '/court': {
+        // 复用已有的 court 子命令逻辑
+        const r = getRegime(regimeId);
+        console.log(chalk.bold('\n' + r.name + ' 架构：\n'));
+        console.log(r.diagram);
+        for (const agent of r.agents) {
+          console.log('  ' + agent.emoji + ' ' + chalk.cyan(agent.name.padEnd(8)) + ' (' + agent.id + ') — ' + agent.role);
+        }
+        console.log();
+        return true;
+      }
+      case '/personality': {
+        const { personalityManager } = require('../src/features/agent-personality');
+        if (parts[1] === 'chemistry' && parts[2] && parts[3]) {
+          personalityManager.printChemistry(parts[2], parts[3]);
+        } else if (parts[1]) {
+          personalityManager.printProfile(parts[1]);
+        }
+        return true;
+      }
+      case '/help':
+        console.log(chalk.bold('\n  天工开物 — 可用功能\n'));
+        console.log('  tiangong "任务"                   直接执行任务');
+        console.log('  tiangong "让兵部和工部PK写排序"   自动触发 PK');
+        console.log('  tiangong "来一场关于微服务的辩论" 自动触发廷议');
+        console.log('  tiangong rank                     查看功勋排行');
+        console.log('  tiangong court                    查看朝廷架构');
+        console.log('  tiangong                          进入交互模式');
+        console.log();
+        return true;
+      case '/exit':
+      case '/clear':
+        return false; // 单次模式无意义
+      default:
+        return false;
+    }
+  } catch (err) {
+    console.error(chalk.red(`\n  执行失败: ${err.message}\n`));
+    return true;
+  }
+}
 
 // 全局前置检查：除了 setup/court/regimes/--help/--version 外，未配置时自动触发登基
 const NO_SETUP_COMMANDS = ['setup', 'court', 'regimes'];

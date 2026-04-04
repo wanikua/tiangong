@@ -79,7 +79,7 @@ function generateAutopsy(session) {
   const report = {
     sessionId: session.id,
     prompt: session.prompt,
-    time: session.startedAt,
+    time: session.startedAt || session.savedAt,
     regime: session.regime,
     failedSteps: [],
     rootCause: null,
@@ -197,9 +197,9 @@ function printAutopsy(sessionIndex) {
   console.log(bannerBox(chalk.bold.red('    🔍  大理寺验尸报告  🔍'), { color: chalk.red }));
   console.log();
 
-  console.log(`  ${chalk.white('旨意:')}   ${report.prompt}`);
-  console.log(`  ${chalk.white('时间:')}   ${new Date(report.time).toLocaleString()}`);
-  console.log(`  ${chalk.white('制度:')}   ${report.regime}`);
+  console.log(`  ${chalk.white('旨意:')}   ${report.prompt || '(无)'}`);
+  console.log(`  ${chalk.white('时间:')}   ${report.time ? new Date(report.time).toLocaleString() : '(未知)'}`);
+  console.log(`  ${chalk.white('制度:')}   ${report.regime || '(未知)'}`);
   console.log();
 
   // 根因分析

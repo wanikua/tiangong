@@ -517,18 +517,8 @@ async function startSession(prompt, options = {}) {
 
   console.log();
 
-  // 多 Agent 路径也保存会话
-  try {
-    const { saveSession, generateSessionId } = require('./session-store');
-    // 收集各 agent 输出作为摘要 messages
-    const summaryMessages = [{ role: 'user', content: prompt }];
-    for (const [stepId, stepResult] of Object.entries(result.results)) {
-      if (stepResult.output?.content) {
-        summaryMessages.push({ role: 'assistant', content: `[${stepResult.output.agent}] ${stepResult.output.content}` });
-      }
-    }
-    saveSession(generateSessionId(), { messages: summaryMessages, prompt, model, regime: regimeId });
-  } catch (err) { log.debug('multi-agent session save failed', err.message); }
+  // 多 Agent 路径：dispatcher 已通过 sessionRecorder (time-travel) 保存了完整会话记录
+  // 不再重复保存到 session-store，避免 replay 列表出现重复条目
 
   // 回调 REPL 的花费追踪
   if (options._onCost) {

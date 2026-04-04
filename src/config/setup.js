@@ -285,6 +285,17 @@ async function runSetup() {
     if (modelIdx >= 0 && modelIdx < provider.models.length) {
       model = provider.models[modelIdx];
     }
+  } else if (!model) {
+    // Provider 没有预设模型列表（如 custom/lmstudio），必须手动输入模型名
+    console.log();
+    console.log(chalk.bold('    【肆】输入模型名称\n'));
+    console.log(chalk.gray('      该 Provider 没有预设模型列表，请手动输入模型名'));
+    console.log(chalk.gray('      例如: gpt-4o, llama3.1:8b, qwen2.5-coder:7b'));
+    console.log();
+    while (!model) {
+      model = (await ask(chalk.yellow('    模型名称: '))).trim();
+      if (!model) console.log(chalk.red('    模型名称不能为空'));
+    }
   }
 
   rl.close();

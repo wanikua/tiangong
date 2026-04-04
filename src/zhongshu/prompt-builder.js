@@ -60,9 +60,9 @@ function buildSystemPrompt(agentId, regimeId = 'ming', context = {}) {
 
   // ── 4. 项目上下文（由 dispatcher 预采集）──
   if (context.projectContext) {
-    parts.push(`\n## 当前项目上下文\n${context.projectContext}`);
+    parts.push(`\n## 当前项目上下文\n工作目录: ${context.cwd || process.cwd()}\n${context.projectContext}`);
   } else if (context.cwd) {
-    parts.push(`\n## 工作目录\n${context.cwd}`);
+    parts.push(`\n## 工作目录\n${context.cwd}\n文件操作必须使用此目录下的路径，不要使用根目录绝对路径如 /tiangong/。`);
   }
   if (context.gitStatus) {
     parts.push(`\n## Git 状态\n${context.gitStatus}`);
