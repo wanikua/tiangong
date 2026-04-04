@@ -7,6 +7,7 @@
  *   /regime    查看/切换制度
  *   /memory    太史局记忆概况
  *   /history   查看最近旨意
+ *   /edit      打开编辑器（多行/长文本）
  *   /clear     清屏
  *   /help      帮助
  *   /exit      退朝
@@ -98,7 +99,7 @@ ${bannerLine('', W)}
 ${bannerLine('   ' + chalk.gray('/court  朝廷架构    /cost   户部账目'), W)}
 ${bannerLine('   ' + chalk.gray('/regime 制度切换    /model  模型切换'), W)}
 ${bannerLine('   ' + chalk.gray('/viking 记忆文件    /clear  清屏'), W)}
-${bannerLine('   ' + chalk.gray('/history 历史旨意   /help 帮助  /exit 退朝'), W)}
+${bannerLine('   ' + chalk.gray('/edit 编辑器   /history 历史   /help 帮助  /exit 退朝'), W)}
 ${bannerLine('', W)}
 ${chalk.yellow('  ╚' + border + '╝')}
 ${wisdomLine ? '\n' + wisdomLine : ''}
@@ -184,7 +185,7 @@ async function startRepl(options) {
   function completer(line) {
     const commands = [
       '/court', '/cost', '/regime', '/model', '/provider',
-      '/memory', '/viking', '/history', '/clear', '/help', '/exit',
+      '/memory', '/viking', '/history', '/edit', '/clear', '/help', '/exit',
       '/dream', '/collab', '/oracle', '/pk', '/debate', '/exam',
       '/rank', '/personality', '/treasure', '/autopsy',
       '/auto-optimize', '/evolve-self', '/evolve', '/replay'
@@ -1038,6 +1039,37 @@ async function startRepl(options) {
       return;
     }
 
+    // ── 文本编辑器模式 ──────────────────────────────────────
+    if (input === '/edit' || input.startsWith('/edit ')) {
+      const { launchEditor } = require('./editor-launcher');
+      const args = input.replace(/^\/edit\s*/, '').trim();
+
+      isProcessing = true;
+      try {
+        const content = await launchEditor({
+          initialContent: args,
+          cwd: process.cwd()
+        });
+
+        if (content === null) {
+          console.log(chalk.gray('\n  已取消编辑\n'));
+        } else if (!content.trim()) {
+          console.log(chalk.gray('\n  编辑内容为空\n'));
+        } else {
+          // 关键：先解除 isProcessing，再走正常输入流程
+          isProcessing = false;
+          console.log(chalk.gray('\n  已提交编辑内容，开始处理...\n'));
+          rl.emit('line', content);
+          return;
+        }
+      } catch (err) {
+        console.error(chalk.red(`\n  编辑器错误: ${err.message}\n`));
+      }
+      isProcessing = false;
+      rl.prompt();
+      return;
+    }
+
     if (input.startsWith('/help') || input === '/帮助') {
       console.log(`
   ${chalk.bold.yellow('朝堂指令：')}
@@ -1070,6 +1102,7 @@ async function startRepl(options) {
     ${chalk.cyan('/personality')}    性格档案 — MBTI × 星座 × 合拍度
 
   ${chalk.gray('── 系统 ──')}
+    ${chalk.cyan('/edit')}          打开编辑器 — 多行/长文本编辑
     ${chalk.cyan('/clear')}          清屏
     ${chalk.cyan('/help')}           帮助
     ${chalk.cyan('/exit')}           退朝
