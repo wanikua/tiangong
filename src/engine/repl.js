@@ -189,11 +189,11 @@ async function startRepl(options) {
    */
   function clearSuggestions() {
     if (suggestLineCount > 0) {
-      process.stdout.write('\x1b[s'); // 保存光标
       for (let i = 0; i < suggestLineCount; i++) {
-        process.stdout.write('\x1b[1B\x1b[2K'); // 下移一行 + 清行
+        process.stdout.write('\x1b[1B');   // 下移一行
+        process.stdout.write('\x1b[2K');   // 清除该行
       }
-      process.stdout.write('\x1b[u'); // 恢复光标
+      process.stdout.write('\x1b[' + suggestLineCount + 'A'); // 上移回去
       suggestLineCount = 0;
     }
   }
@@ -205,12 +205,21 @@ async function startRepl(options) {
     clearSuggestions();
     if (hits.length === 0) return;
 
-    process.stdout.write('\x1b[s'); // 保存光标
+    const promptWidth = displayWidth(getPrompt());
+    const lineWidth = displayWidth(rl.line || '');
+    const cursorCol = promptWidth + lineWidth;
+
     for (const h of hits) {
+      process.stdout.write('\x1b[1B');  // 下移一行
+      process.stdout.write('\x1b[2K');  // 清除该行
       const cmdStr = h.cmd.padEnd(22);
-      process.stdout.write('\n\x1b[2K \x1b[36m' + cmdStr + '\x1b[90m' + h.desc + '\x1b[0m');
+      process.stdout.write('  \x1b[36m' + cmdStr + '\x1b[90m' + h.desc + '\x1b[0m');
     }
-    process.stdout.write('\x1b[u'); // 恢复光标
+
+    // 回到输入行：上移 hits.length 行，然后移到光标列
+    process.stdout.write('\x1b[' + hits.length + 'A');  // 上移
+    process.stdout.write('\r\x1b[' + cursorCol + 'C');  // 回到行首再右移
+
     suggestLineCount = hits.length;
   }
 
