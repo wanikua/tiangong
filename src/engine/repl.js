@@ -261,13 +261,37 @@ async function startRepl(options) {
       console.log();
       console.log(chalk.yellow('  🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍'));
       console.log();
-      console.log(chalk.bold.yellow('     你找到了隐藏彩蛋！'));
+      console.log(chalk.bold.yellow('     这是菠萝王朝皇帝'));
       console.log();
       console.log(chalk.white('     天工开物 — by 菠萝菠菠'));
       console.log(chalk.gray('     「代码如诗，架构如朝。」'));
       console.log(chalk.gray('     「一个人也可以建一座朝廷。」'));
       console.log();
       console.log(chalk.yellow('  🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍🍍'));
+      console.log();
+      rl.prompt();
+      return;
+    }
+
+    if (input === '桃子桃桃' || input === '🍑') {
+      console.log();
+      console.log(chalk.magenta('  🍑🍑🍑🍑🍑🍑🍑🍑🍑🍑🍑🍑🍑🍑🍑🍑🍑🍑🍑🍑'));
+      console.log();
+      console.log(chalk.bold.magenta('     菠萝王朝皇后，听说是个很漂亮的姑娘'));
+      console.log();
+      console.log(chalk.magenta('  🍑🍑🍑🍑🍑🍑🍑🍑🍑🍑🍑🍑🍑🍑🍑🍑🍑🍑🍑🍑'));
+      console.log();
+      rl.prompt();
+      return;
+    }
+
+    if (input === '万岁' || input === '万岁万岁万万岁') {
+      console.log();
+      console.log(chalk.red('  ╔══════════════════════════════════╗'));
+      console.log(chalk.red('  ║') + chalk.bold.yellow('   吾皇万岁万岁万万岁！           ') + chalk.red('║'));
+      console.log(chalk.red('  ║') + chalk.yellow('   🍍 菠萝王朝国泰民安，风调雨顺！') + chalk.red('║'));
+      console.log(chalk.red('  ║') + chalk.gray('   臣等恭祝圣上万寿无疆           ') + chalk.red('║'));
+      console.log(chalk.red('  ╚══════════════════════════════════╝'));
       console.log();
       rl.prompt();
       return;
