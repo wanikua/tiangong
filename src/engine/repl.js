@@ -190,8 +190,7 @@ async function startRepl(options) {
   function clearSuggestions() {
     if (suggestLineCount > 0) {
       for (let i = 0; i < suggestLineCount; i++) {
-        process.stdout.write('\x1b[1B');   // 下移一行
-        process.stdout.write('\x1b[2K');   // 清除该行
+        process.stdout.write('\x1b[1B\r\x1b[2K'); // 下移+回行首+清行
       }
       process.stdout.write('\x1b[' + suggestLineCount + 'A'); // 上移回去
       suggestLineCount = 0;
@@ -214,9 +213,8 @@ async function startRepl(options) {
     process.stdout.write('\x1b[' + hits.length + 'A'); // 上移回到第一行
 
     for (const h of hits) {
-      process.stdout.write('\x1b[1B');  // 下移一行
-      process.stdout.write('\x1b[2K');  // 清除该行
       const cmdStr = h.cmd.padEnd(22);
+      process.stdout.write('\x1b[1B\r\x1b[2K'); // 下移+回行首+清行
       process.stdout.write('  \x1b[36m' + cmdStr + '\x1b[90m' + h.desc + '\x1b[0m');
     }
 
