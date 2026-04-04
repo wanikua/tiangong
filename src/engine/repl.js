@@ -287,11 +287,11 @@ async function startRepl(options) {
 
     if (input === '万岁' || input === '万岁万岁万万岁') {
       console.log();
-      console.log(chalk.red('  ╔══════════════════════════════════╗'));
-      console.log(chalk.red('  ║') + chalk.bold.yellow('   吾皇万岁万岁万万岁！           ') + chalk.red('║'));
-      console.log(chalk.red('  ║') + chalk.yellow('   🍍 菠萝王朝国泰民安，风调雨顺！') + chalk.red('║'));
-      console.log(chalk.red('  ║') + chalk.gray('   臣等恭祝圣上万寿无疆           ') + chalk.red('║'));
-      console.log(chalk.red('  ╚══════════════════════════════════╝'));
+      console.log(chalk.red('  ╔══════════════════════════════════════╗'));
+      console.log(chalk.red('  ║') + chalk.bold.yellow('   🍍 菠萝王朝向友邦发来贺电！       ') + chalk.red('║'));
+      console.log(chalk.red('  ║') + chalk.yellow('   吾皇万岁万岁万万岁！               ') + chalk.red('║'));
+      console.log(chalk.red('  ║') + chalk.gray('   国泰民安，风调雨顺，千秋万代       ') + chalk.red('║'));
+      console.log(chalk.red('  ╚══════════════════════════════════════╝'));
       console.log();
       rl.prompt();
       return;
