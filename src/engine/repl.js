@@ -7,6 +7,7 @@
  *   /regime    查看/切换制度
  *   /memory    太史局记忆概况
  *   /history   查看最近旨意
+ *   /edit      打开编辑器（多行/长文本）
  *   /clear     清屏
  *   /help      帮助
  *   /exit      退朝
@@ -98,7 +99,7 @@ ${bannerLine('', W)}
 ${bannerLine('   ' + chalk.gray('/court  朝廷架构    /cost   户部账目'), W)}
 ${bannerLine('   ' + chalk.gray('/regime 制度切换    /model  模型切换'), W)}
 ${bannerLine('   ' + chalk.gray('/viking 记忆文件    /clear  清屏'), W)}
-${bannerLine('   ' + chalk.gray('/history 历史旨意   /help 帮助  /exit 退朝'), W)}
+${bannerLine('   ' + chalk.gray('/edit 编辑器   /history 历史   /help 帮助  /exit 退朝'), W)}
 ${bannerLine('', W)}
 ${chalk.yellow('  ╚' + border + '╝')}
 ${wisdomLine ? '\n' + wisdomLine : ''}
@@ -180,15 +181,97 @@ async function startRepl(options) {
     return chalk.yellow(`  ${name} ${icon} > `);
   }
 
+  // ── 候选列表提示 ──────────────────────────
+  let suggestLineCount = 0; // 当前显示了多少行候选
+
+  /**
+   * 清除候选列表（光标从输入行往下擦）
+   */
+  function clearSuggestions() {
+    if (suggestLineCount > 0) {
+      for (let i = 0; i < suggestLineCount; i++) {
+        process.stdout.write('\x1b[1B\r\x1b[2K'); // 下移+回行首+清行
+      }
+      process.stdout.write('\x1b[' + suggestLineCount + 'A'); // 上移回去
+      suggestLineCount = 0;
+    }
+  }
+
+  /**
+   * 在输入行下方绘制候选列表
+   */
+  function drawSuggestions(hits) {
+    clearSuggestions();
+    if (hits.length === 0) return;
+
+    const promptWidth = displayWidth(getPrompt());
+    const lineWidth = displayWidth(rl.line || '');
+    const cursorCol = promptWidth + lineWidth;
+
+    // 预留空行，防止终端底部无空间导致横排
+    process.stdout.write('\n'.repeat(hits.length));
+    process.stdout.write('\x1b[' + hits.length + 'A'); // 上移回到第一行
+
+    for (const h of hits) {
+      const cmdStr = h.cmd.padEnd(22);
+      process.stdout.write('\x1b[1B\r\x1b[2K'); // 下移+回行首+清行
+      process.stdout.write('  \x1b[36m' + cmdStr + '\x1b[90m' + h.desc + '\x1b[0m');
+    }
+
+    // 回到输入行：上移 hits.length 行，然后移到光标列
+    process.stdout.write('\x1b[' + hits.length + 'A');  // 上移
+    process.stdout.write('\r\x1b[' + cursorCol + 'C');  // 回到行首再右移
+
+    suggestLineCount = hits.length;
+  }
+
+  /**
+   * 获取匹配的命令（带描述）
+   */
+  function getHits(line) {
+    const trimmed = line.trimStart();
+    if (!trimmed.startsWith('/') || trimmed.length < 2) return [];
+    const parts = trimmed.split(/\s+/);
+    if (parts.length !== 1) return [];
+
+    const prefix = parts[0];
+    return commandDefs.filter(d => d.cmd.startsWith(prefix) && d.cmd !== prefix);
+  }
+
+  // ── 命令列表（Tab 补全 + 候选提示共用） ──
+  const commandDefs = [
+    { cmd: '/court', desc: '显示朝廷架构 + 百官名册' },
+    { cmd: '/cost', desc: '户部报账' },
+    { cmd: '/regime', desc: '查看/切换制度 (ming/tang/modern)' },
+    { cmd: '/model', desc: '模型切换' },
+    { cmd: '/provider', desc: '切换 AI 提供商' },
+    { cmd: '/memory', desc: '太史局记忆概况' },
+    { cmd: '/viking', desc: 'Viking 上下文文件系统' },
+    { cmd: '/history', desc: '旨意历史' },
+    { cmd: '/edit', desc: '打开编辑器 — 多行/长文本编辑' },
+    { cmd: '/clear', desc: '清屏' },
+    { cmd: '/help', desc: '帮助' },
+    { cmd: '/exit', desc: '退朝' },
+    { cmd: '/dream', desc: '朝堂梦境 — AI 预判下一步' },
+    { cmd: '/collab', desc: '六部联名 — 多 Agent 协同编码' },
+    { cmd: '/oracle', desc: '天书降世 — 粘贴错误日志自动修复' },
+    { cmd: '/pk', desc: '武举殿试 — Agent 对决擂台' },
+    { cmd: '/debate', desc: '廷议 — 多 Agent 朝堂辩论' },
+    { cmd: '/exam', desc: '科举考试 — Agent 能力基准测试' },
+    { cmd: '/rank', desc: '功勋榜 — Agent 经验值 + 品阶' },
+    { cmd: '/auto-optimize', desc: '自动 Prompt 优化' },
+    { cmd: '/evolve-self', desc: '自进化 — Agent 自我改进系统' },
+    { cmd: '/evolve', desc: '朝代更迭 — 智能制度自适应推荐' },
+    { cmd: '/replay', desc: '奏折回放 — 会话时间旅行' },
+    { cmd: '/autopsy', desc: '大理寺 — 故障验尸报告' },
+    { cmd: '/treasure', desc: '寻宝奇缘 — 提示词寻宝游戏' },
+    { cmd: '/personality', desc: '性格档案 — MBTI × 星座 × 合拍度' },
+  ];
+  const commands = commandDefs.map(d => d.cmd);
+
   // ── Tab 命令补全 ──
   function completer(line) {
-    const commands = [
-      '/court', '/cost', '/regime', '/model', '/provider',
-      '/memory', '/viking', '/history', '/clear', '/help', '/exit',
-      '/dream', '/collab', '/oracle', '/pk', '/debate', '/exam',
-      '/rank', '/personality', '/treasure', '/autopsy',
-      '/auto-optimize', '/evolve-self', '/evolve', '/replay'
-    ];
+    // commands 使用上方共享数组
 
     const trimmed = line.trimStart();
     if (!trimmed.startsWith('/')) return [[], line];
@@ -199,7 +282,8 @@ async function startRepl(options) {
     // 还在输入命令名
     if (parts.length === 1) {
       const hits = commands.filter(c => c.startsWith(cmd));
-      return [hits.length ? hits : [], cmd];
+      if (hits.length === 1) return [hits, cmd]; // 唯一匹配：让 readline 补全
+      return [[], cmd]; // 多个匹配或无匹配：让自绘列表处理
     }
 
     // 补全参数
@@ -245,6 +329,58 @@ async function startRepl(options) {
   });
 
   rl.prompt();
+
+  // ── 候选列表 + Ctrl+G ──
+  readline.emitKeypressEvents(process.stdin);
+  if (process.stdin.isTTY && !process.stdin.listenerCount('keypress')) {
+    readline.emitKeypressEvents(process.stdin);
+  }
+  if (process.stdin.isTTY) {
+    process.stdin.on('keypress', (ch, key) => {
+      // Ctrl+G → 编辑器
+      if (key && key.ctrl && key.name === 'g' && !isProcessing) {
+        clearSuggestions();
+        rl.write(null, { ctrl: true, name: 'u' });
+        rl.emit('line', '/edit');
+        return;
+      }
+
+      // Tab → 唯一匹配时自动补全
+      if (key && key.name === 'tab') {
+        const line = rl.line || '';
+        const hits = getHits(line);
+        if (hits.length === 1) {
+          clearSuggestions();
+          const suffix = hits[0].cmd.slice(line.trimStart().length);
+          rl.write(suffix);
+        }
+        return; // Tab 不走下面的 setImmediate
+      }
+
+      // Enter → 清掉候选
+      if (key && key.name === 'return') {
+        clearSuggestions();
+        return;
+      }
+
+      // 忽略非输入按键（方向键、Ctrl组合键、Meta等）
+      if (key && (key.ctrl || key.meta ||
+        ['up', 'down', 'left', 'right', 'escape'].includes(key.name))) {
+        return;
+      }
+
+      // 可打印字符/退格 → 更新候选列表
+      setImmediate(() => {
+        const line = rl.line || '';
+        const hits = getHits(line);
+        if (hits.length > 0) {
+          drawSuggestions(hits);
+        } else {
+          clearSuggestions();
+        }
+      });
+    });
+  }
 
   rl.on('line', async (line) => {
     const input = line.trim();
@@ -1038,6 +1174,43 @@ async function startRepl(options) {
       return;
     }
 
+    // ── 文本编辑器模式 ──────────────────────────────────────
+    if (input === '/edit' || input.startsWith('/edit ')) {
+      const { launchEditor } = require('./editor-launcher');
+      const args = input.replace(/^\/edit\s*/, '').trim();
+
+      isProcessing = true;
+      try {
+        const content = await launchEditor({
+          initialContent: args,
+          cwd: process.cwd()
+        });
+
+        if (content === null) {
+          console.log(chalk.gray('\n  已取消编辑\n'));
+        } else if (!content.trim()) {
+          console.log(chalk.gray('\n  编辑内容为空\n'));
+        } else {
+          // 关键：先解除 isProcessing，再走正常输入流程
+          isProcessing = false;
+          console.log(chalk.gray('\n  ── 编辑内容 ──'));
+          const lines = content.trimEnd().split('\n');
+          for (const ln of lines) {
+            console.log(chalk.white('  │ ') + ln);
+          }
+          console.log(chalk.gray('  ────────────\n'));
+          console.log(chalk.gray('\n  已提交编辑内容，开始处理...\n'));
+          rl.emit('line', content);
+          return;
+        }
+      } catch (err) {
+        console.error(chalk.red(`\n  编辑器错误: ${err.message}\n`));
+      }
+      isProcessing = false;
+      rl.prompt();
+      return;
+    }
+
     if (input.startsWith('/help') || input === '/帮助') {
       console.log(`
   ${chalk.bold.yellow('朝堂指令：')}
@@ -1070,6 +1243,7 @@ async function startRepl(options) {
     ${chalk.cyan('/personality')}    性格档案 — MBTI × 星座 × 合拍度
 
   ${chalk.gray('── 系统 ──')}
+    ${chalk.cyan('/edit')}          打开编辑器 — 多行/长文本编辑
     ${chalk.cyan('/clear')}          清屏
     ${chalk.cyan('/help')}           帮助
     ${chalk.cyan('/exit')}           退朝
